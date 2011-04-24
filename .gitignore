@@ -1,0 +1,4 @@
+*.pyc
+*~
+data/temp.txt
+*.komodoproject
