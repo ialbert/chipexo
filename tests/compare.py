@@ -1,6 +1,9 @@
 from optparse import OptionParser
 import csv
 
+def print_graph(graph):
+	print ' '.join(['%3d' % x for x in graph]) + '   [%d]' % len(graph)
+
 def compare(pathA, pathB, column=0, bins=20):
     dataA = []
     dataB = []
@@ -17,8 +20,8 @@ def compare(pathA, pathB, column=0, bins=20):
         graphA[i] = len([x for x in dataA if lower+width*i < x < lower+width*(i+1)])
         graphB[i] = len([x for x in dataB if lower+width*i < x < lower+width*(i+1)])
     print [int(lower+i*width) for i in range(bins)]
-    print graphA
-    print graphB
+    print_graph(graphA)
+    print_graph(graphB)
     print graphA == graphB
         
 if __name__ == '__main__':
