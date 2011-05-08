@@ -17,7 +17,8 @@ def numeric_to_zeropad(data):
     
 def roman_to_numeric(data):
     for num, roman in enumerate(ROMAN):
-        data = re.sub('chr%s([^IVX]|$)' % roman, r'chr%d\1' % num, data)
+        r = re.compile('chr%s([^IVX]|$)' % roman, flags=re.IGNORECASE)
+        data = r.sub(r'chr%d\1' % num, data)
     return data
 
 def numeric_to_roman(data):
@@ -33,9 +34,18 @@ def conversion_functions(in_fmt, out_fmt):
     ''' Returns the proper list of functions to apply to perform a conversion '''
     return [IN_CONVERT[in_fmt], OUT_CONVERT[out_fmt]]
     
+def autodetect_format(data):
+    if re.search('chr0\d', data):
+        return 'zeropad'
+    if re.search('chr[IVXivx]', data):
+        return 'roman'
+    return 'numeric'
+    
 def process_file(path, in_fmt, out_fmt):
     f = open(path, 'rt')
     data = f.read()
+    if in_fmt == 'autodetect':
+        in_fmt = autodetect_format(data)
     f.close()
     f = open(path, 'wt')
     for fn in conversion_functions(in_fmt, out_fmt):
@@ -66,13 +76,13 @@ class CustomHelpFormatter(IndentedHelpFormatter):
 
 def run():   
     parser = OptionParser(usage='%prog [options] input_paths', description=usage, formatter=CustomHelpFormatter())
-    parser.add_option('-i', action='store', type='string', dest='in_format', default='numeric',
-                      help='Format input data is in. Default numeric.')
+    parser.add_option('-i', action='store', type='string', dest='in_format', default='autodetect',
+                      help='Format input data is in. Default autodetect.')
     parser.add_option('-o', action='store', type='string', dest='out_format', default='numeric',
                       help='Format to output data in. Default numeric.')
     (options, args) = parser.parse_args()
         
-    if options.in_format not in FORMATS or options.out_format not in FORMATS:
+    if options.in_format not in FORMATS+['autodetect']  or options.out_format not in FORMATS:
         parser.error('%s is not a valid method. Use -h option for a list of valid methods.' % options.method)
         
     if not args:
@@ -93,11 +103,4 @@ def run():
 
 if __name__ == '__main__':
     run()
-    print open('data.txt').read()
-    sys.exit(0)
-    f = open('data.txt','wt')
-    f.write('chr04')
-    f.close()
-    process_file('data.txt', 'zeropad', 'roman')
-    print open('data.txt').read()
     
