@@ -40,18 +40,27 @@ def autodetect_format(data):
     if re.search('chr[IVXivx]', data):
         return 'roman'
     return 'numeric'
+   
+def convert_data(data, in_fmt, out_fmt):
+    if in_fmt == 'autodetect':
+        in_fmt = autodetect_format(data)
+    for fn in conversion_functions(in_fmt, out_fmt):
+        data = fn(data)
+    return data
     
 def process_file(path, in_fmt, out_fmt):
     f = open(path, 'rt')
     data = f.read()
-    if in_fmt == 'autodetect':
-        in_fmt = autodetect_format(data)
     f.close()
+    data = convert_data(data, in_fmt, out_fmt)
     f = open(path, 'wt')
-    for fn in conversion_functions(in_fmt, out_fmt):
-        data = fn(data)
     f.write(data)
     f.close()
+    
+def process_pipe(in_fmt, out_fmt):
+    data = sys.stdin.read()
+    data = convert_data(data, in_fmt, out_fmt)
+    sys.stdout.write(data)
     
     
 usage = '''
@@ -59,6 +68,7 @@ input_paths may be:
 - a file or list of files to run on
 - a directory or list of directories to run on all files in them
 - "." to run in the current directory
+- "-" to run from standard input and pipe output to standard output
 
 formats are:
 - numeric: "chr" followed by a number.                  ex chr4
@@ -83,11 +93,15 @@ def run():
     (options, args) = parser.parse_args()
         
     if options.in_format not in FORMATS+['autodetect']  or options.out_format not in FORMATS:
-        parser.error('%s is not a valid method. Use -h option for a list of valid methods.' % options.method)
+        parser.error('%s is not a valid format. Use -h option for a list of valid formats.' % options.method)
         
     if not args:
         parser.print_help()
         sys.exit(1)
+        
+    if args == ['-']:
+        process_pipe(options.in_format, options.out_format)
+        sys.exit(0)
         
     for path in args:
         if not os.path.exists(path):
