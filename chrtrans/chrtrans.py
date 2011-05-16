@@ -1,5 +1,7 @@
 from optparse import OptionParser, IndentedHelpFormatter
-import re, sys, os
+import re, sys, os, logging
+
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 ROMAN = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
          'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX',
@@ -36,10 +38,13 @@ def conversion_functions(in_fmt, out_fmt):
     
 def autodetect_format(data):
     if re.search('chr0\d', data):
-        return 'zeropad'
-    if re.search('chr[IVXivx]', data):
-        return 'roman'
-    return 'numeric'
+        fmt = 'zeropad'
+    elif re.search('chr[IVXivx]', data):
+        fmt = 'roman'
+    else:
+        fmt = 'numeric'
+    logging.info('Autodetected format %s' % fmt)
+    return fmt   
    
 def convert_data(data, in_fmt, out_fmt):
     if in_fmt == 'autodetect':
@@ -49,13 +54,27 @@ def convert_data(data, in_fmt, out_fmt):
     return data
     
 def process_file(path, in_fmt, out_fmt):
+    logging.info('Reading "%s"' % path)
     f = open(path, 'rt')
     data = f.read()
     f.close()
+    
+    if in_fmt == 'autodetect':
+        in_fmt = autodetect_format(data)
+    dir, fname = os.path.split(path)
+    target_dir = os.path.join(dir, '%s_to_%s' % (in_fmt, out_fmt))
+    if not os.path.exists(target_dir):
+        os.mkdir(target_dir)
+    out_path = os.path.join(target_dir, fname)
+
+
     data = convert_data(data, in_fmt, out_fmt)
-    f = open(path, 'wt')
+    
+    
+    f = open(out_path, 'wt')
     f.write(data)
     f.close()
+    logging.info('Wrote "%s"' % out_path)
     
 def process_pipe(in_fmt, out_fmt):
     data = sys.stdin.read()
@@ -90,7 +109,11 @@ def run():
                       help='Format input data is in. Default autodetect.')
     parser.add_option('-o', action='store', type='string', dest='out_format', default='numeric',
                       help='Format to output data in. Default numeric.')
+    parser.add_option('-q', action='store_true', dest='quiet', help='Quiet mode: suppresses all non-error messages')
     (options, args) = parser.parse_args()
+        
+    if options.quiet:
+        logging.getLogger().setLevel(logging.ERROR) # Silence all non-error messages
         
     if options.in_format not in FORMATS+['autodetect']  or options.out_format not in FORMATS:
         parser.error('%s is not a valid format. Use -h option for a list of valid formats.' % options.method)
