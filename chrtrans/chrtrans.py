@@ -18,14 +18,28 @@ def numeric_to_zeropad(data):
     return re.sub(r'chr(\d([^\d]|$))', r'chr0\1', data)
     
 def roman_to_numeric(data):
-    for num, roman in enumerate(ROMAN):
-        r = re.compile('chr%s([^IVX]|$)' % roman, flags=re.IGNORECASE)
-        data = r.sub(r'chr%d\1' % num, data)
+    def convert(match):
+        ''' Converts a single roman numeral to a number '''
+        numeral = match.group(1)
+        numeral = numeral.upper()
+        if numeral not in ROMAN:
+            logging.error('Unable to convert detected Roman numeral "%s"' % numeral)
+            return match.group(0) 
+        return 'chr'+str(ROMAN.index(numeral))+(match.group(2) or '')
+    r = re.compile('chr([IVX]+)([^IVX]|$)', flags=re.IGNORECASE)
+    data = r.sub(convert, data)
     return data
 
 def numeric_to_roman(data):
-    for num, roman in enumerate(ROMAN):
-        data = re.sub('chr%d([^\d]|$)' % num, r'chr%s\1' % roman,  data)
+    def convert(match):
+        ''' Converts a number to a roman numeral '''
+        number = int(match.group(1))
+        if number >= len(ROMAN):
+            logging.error('Number "%d" is out of range to convert to a Roman numeral' % number)
+            return match.group(0)
+        return 'chr'+ROMAN[number]+(match.group(2) or '')
+    r = re.compile('chr(\d+)([^\d]|$)')
+    data = r.sub(convert,  data)
     return data
 
 FORMATS = ['zeropad', 'numeric', 'roman']
@@ -123,6 +137,7 @@ def run():
         sys.exit(1)
         
     if args == ['-']:
+        logging.disable(logging.CRITICAL) # Disable -all- log messages in pipe mode
         process_pipe(options.in_format, options.out_format)
         sys.exit(0)
         
