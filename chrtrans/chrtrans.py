@@ -1,3 +1,18 @@
+# chrtrans.py
+#
+# Chromosome number translation script
+# Converts between formats like chr4 <-> chr04 <-> chrIV
+#
+# By Pindi Albert, 2011
+#
+# Input: any file containing chromosome numbers in the form chrXX
+# Note: each chromosome number must be bounded by whitespace (space, tab, newline)
+#
+# Output: file with numbers translated from one format to another
+# All other file contents are left untouched
+#
+# Run with no arguments or -h for usage, command line options, and supported formats
+
 from optparse import OptionParser, IndentedHelpFormatter
 import re, sys, os, logging
 
