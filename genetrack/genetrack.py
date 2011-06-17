@@ -6,10 +6,10 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 WIDTH = 100
 
 class Peak(object):
-    def __init__(self, index):
+    def __init__(self, index, width):
         self.index = index
-        self.start = index - 10
-        self.end = index + 10
+        self.start = index - width//2
+        self.end = index + width//2
         self.value = 0
         self.deleted = False
         self.safe = False
@@ -66,14 +66,14 @@ def normal_array(width, sigma, normalize=True):
 
     return values
 
-def call_peaks(array, data, keys, direction, width=WIDTH, exclusion=0):
+def call_peaks(array, data, keys, direction, exclusion):
     peaks = []
     def find_peaks():
         # Go through the array and call each peak
         results = (array > numpy.roll(array, 1)) & (array > numpy.roll(array, -1))
         indexes = numpy.where(results)
         for index in indexes[0]:
-            peaks.append(Peak(int(index)-WIDTH))
+            peaks.append(Peak(int(index)-WIDTH), exclusion)
     find_peaks()
         
     def calculate_reads():
