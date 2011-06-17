@@ -73,7 +73,7 @@ def call_peaks(array, data, keys, direction, width=WIDTH, exclusion=0):
         results = (array > numpy.roll(array, 1)) & (array > numpy.roll(array, -1))
         indexes = numpy.where(results)
         for index in indexes[0]:
-            peaks.append(Peak(int(index)))
+            peaks.append(Peak(int(index)-WIDTH))
     find_peaks()
         
     def calculate_reads():
