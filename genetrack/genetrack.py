@@ -73,14 +73,7 @@ def call_peaks(array, data, keys, direction, width=WIDTH, exclusion=0):
         results = (array > numpy.roll(array, 1)) & (array > numpy.roll(array, -1))
         indexes = numpy.where(results)
         for index in indexes[0]:
-            peaks.append(Peak(index))
-        #history = [array[0], array[1]] # Last 2 values
-        #for i, value in enumerate(array[2:]):
-        #    if history[1] > history[0] and history[1] > value:
-        #        # history[1] is a peak
-        #        peaks.append(Peak(i+1-WIDTH, history[1]))
-        #    history[0] = history[1] # Shift history values
-        #    history[1] = value
+            peaks.append(Peak(int(index)))
     find_peaks()
         
     def calculate_reads():
@@ -114,6 +107,9 @@ def call_peaks(array, data, keys, direction, width=WIDTH, exclusion=0):
     return peaks
     
 def process_file(path, sigma, exclusion):
+    
+    global WIDTH
+    WIDTH = sigma * 5
     
     logging.info('Processing file "%s"' % path)
     
@@ -213,5 +209,5 @@ def run():
 if __name__ == '__main__':
     #run()
     import cProfile
-    cProfile.run('run()', 'profile.bin')
+    cProfile.run('run()', 'profilev4.bin')
             
