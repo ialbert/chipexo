@@ -86,8 +86,7 @@ def get_index(value, keys):
 def allocate_array(data, width=0):
     ''' Allocated a new array with the dimensions required to fit all reads in the
     argument. The new array is totally empty.'''
-    #hi = max([item[0] for item in data])
-    hi = 1000000
+    hi = max([item[0] for item in data])
     return numpy.zeros(hi+width*2, numpy.float)
     
 def normal_array(width, sigma, normalize=True):
@@ -115,7 +114,7 @@ def call_peaks(array, data, keys, direction, exclusion):
         results = (array > numpy.roll(array, 1)) & (array > numpy.roll(array, -1))
         indexes = numpy.where(results)
         for index in indexes[0]:
-            peaks.append(Peak(int(index)-WIDTH), exclusion)
+            peaks.append(Peak(int(index)-WIDTH, exclusion))
     find_peaks()
         
     def calculate_reads():
@@ -206,7 +205,7 @@ def process_file(path, sigma, exclusion):
     writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
     
     for cname, data in chromosome_iterator(reader):
-        process_chromosome(cname, data, writer, sigma, exclusion)
+        process_chromosome(cname, list(data), writer, sigma, exclusion)
     
 
 usage = '''
