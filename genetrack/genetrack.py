@@ -106,6 +106,40 @@ def call_peaks(array, data, keys, direction, width=WIDTH, exclusion=0):
             
     return peaks
     
+def process_chromosome(cname, data, writer, sigma, exclusion):
+    
+    logging.debug('Processing chromosome %s' % cname)
+    keys = make_keys(data)
+    # Create the arrays that hold the sum of the normals
+    forward_array = allocate_array(data, WIDTH)
+    reverse_array = allocate_array(data, WIDTH)
+    normal = normal_array(WIDTH, sigma)
+    
+    
+    def populate_array():
+        # Add each read's normal to the array
+        for read in data:
+            index, forward, reverse = read
+            # Add the normals to the appropriate regions
+            if forward:
+                forward_array[index:index+WIDTH*2] += normal * forward
+            if reverse:
+                reverse_array[index:index+WIDTH*2] += normal * reverse
+    populate_array()
+        
+    logging.debug('Calling forward strand')
+    forward_peaks = call_peaks(forward_array, data, keys, 1, exclusion=exclusion)
+    logging.debug('Calling reverse strand')
+    reverse_peaks = call_peaks(reverse_array, data, keys, 2, exclusion=exclusion)
+
+    
+    for peak in forward_peaks:
+        writer.writerow((cname, '+', peak.start, peak.end, peak.value))
+    for peak in reverse_peaks:
+        writer.writerow((cname, '-', peak.start, peak.end, peak.value))   
+    
+    
+    
 def process_file(path, sigma, exclusion):
     
     global WIDTH
@@ -129,31 +163,7 @@ def process_file(path, sigma, exclusion):
     writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
     
     for cname, data in chromosomes.items():
-        logging.debug('Processing chromosome %s' % cname)
-        data = chromosomes[cname]
-        keys = make_keys(data)
-        # Create the arrays that hold the sum of the normals
-        forward_array = allocate_array(data, WIDTH)
-        reverse_array = allocate_array(data, WIDTH)
-        normal = normal_array(WIDTH, sigma)
-        
-        # Add each read's normal to the array
-        for read in data:
-            index, forward, reverse = read
-            # Add the normals to the appropriate regions
-            forward_array[index:index+WIDTH*2] += normal * forward
-            reverse_array[index:index+WIDTH*2] += normal * reverse
-            
-        logging.debug('Calling forward strand')
-        forward_peaks = call_peaks(forward_array, data, keys, 1, exclusion=exclusion)
-        logging.debug('Calling reverse strand')
-        reverse_peaks = call_peaks(reverse_array, data, keys, 2, exclusion=exclusion)
-    
-        
-        for peak in forward_peaks:
-            writer.writerow((cname, '+', peak.start, peak.end, peak.value))
-        for peak in reverse_peaks:
-            writer.writerow((cname, '-', peak.start, peak.end, peak.value))   
+        process_chromosome(cname, data, writer, sigma, exclusion)
     
 
 usage = '''
@@ -207,7 +217,7 @@ def run():
             process_file(path, options.sigma, options.exclusion)
             
 if __name__ == '__main__':
-    #run()
-    import cProfile
-    cProfile.run('run()', 'profilev4.bin')
+    run()
+    #import cProfile
+    #cProfile.run('run()', 'profilev5.bin')
             
