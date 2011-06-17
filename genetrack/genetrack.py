@@ -26,6 +26,47 @@ def parse_reads(reader):
         chromosomes[cname].append([int(index), int(forward), int(reverse)])
     return chromosomes
 
+class CSVReaderWrapper(object):
+    ''' A wrapper around a CSV reader that can rewind one line '''
+    def __init__(self, reader):
+        last = None
+        rewound = False
+    def rewind(self):
+        rewound = True
+    def next(self):
+        if rewound:
+            return last
+        else:
+            return aaa
+       
+def parse_line(line):
+    cname, index, forward, reverse = line[:4]
+    return [int(index), int(forward), int(reverse)]
+
+LINE = None
+current_chromosome = None
+
+
+def chromosome_iterator(reader):
+    global LINE, current_chromosome
+    chromosomes = []
+    reader.next()
+    def reads_iterator():
+        global LINE, current_chromosome
+        yield parse_line(LINE)
+        while True:
+            LINE = reader.next()
+            if LINE[0] != current_chromosome:
+                current_chromosome = LINE[0]
+                return
+            yield parse_line(LINE)
+    LINE = reader.next()
+    current_chromosome = LINE[0]
+    while True:
+        yield current_chromosome, reads_iterator()
+                
+
+
 def make_keys(data):
     return [read[0] for read in data]
     
@@ -45,7 +86,8 @@ def get_index(value, keys):
 def allocate_array(data, width=0):
     ''' Allocated a new array with the dimensions required to fit all reads in the
     argument. The new array is totally empty.'''
-    hi = max([item[0] for item in data])
+    #hi = max([item[0] for item in data])
+    hi = 1000000
     return numpy.zeros(hi+width*2, numpy.float)
     
 def normal_array(width, sigma, normalize=True):
@@ -158,11 +200,12 @@ def process_file(path, sigma, exclusion):
         os.mkdir(output_dir)
     output_path = os.path.join(output_dir, fname+'O_%s.txt' % fname)
     
-    chromosomes = parse_reads(csv.reader(open(path,'rU'), delimiter='\t'))
+    reader = csv.reader(open(path,'rU'), delimiter='\t')
+    #chromosomes = parse_reads(reader)
     writer = csv.writer(open(output_path, 'wt'), delimiter='\t')
     writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
     
-    for cname, data in chromosomes.items():
+    for cname, data in chromosome_iterator(reader):
         process_chromosome(cname, data, writer, sigma, exclusion)
     
 
@@ -217,7 +260,15 @@ def run():
             process_file(path, options.sigma, options.exclusion)
             
 if __name__ == '__main__':
-    run()
-    #import cProfile
-    #cProfile.run('run()', 'profilev5.bin')
+    '''reader = csv.reader(open('data/INPUT_genetrack_Reb1_rep2.idx', 'rU'), delimiter='\t')
+    it = chromosome_iterator(reader)
+    cname, itt = it.next()
+    for obj in itt:
+        print obj
+    cname, itt = it.next()
+    for obj in itt:
+        print obj'''
+    #run()
+    import cProfile
+    cProfile.run('run()', 'profilev6.bin')
             
