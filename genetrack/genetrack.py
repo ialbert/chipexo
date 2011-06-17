@@ -6,11 +6,11 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 WIDTH = 100
 
 class Peak(object):
-    def __init__(self, index, value):
+    def __init__(self, index):
         self.index = index
         self.start = index - 10
         self.end = index + 10
-        self.value = value
+        self.value = 0
         self.deleted = False
         self.safe = False
     def __repr__(self):
@@ -67,36 +67,46 @@ def normal_array(width, sigma, normalize=True):
     return values
 
 def call_peaks(array, data, keys, direction, width=WIDTH, exclusion=0):
-    # Go through the array and call each peak
     peaks = []
-    history = [array[0], array[1]] # Last 2 values
-    for i, value in enumerate(array[2:]):
-        if history[1] > history[0] and history[1] > value:
-            # history[1] is a peak
-            peaks.append(Peak(i+1-WIDTH, history[1]))
-        history[0] = history[1] # Shift history values
-        history[1] = value
+    def find_peaks():
+        # Go through the array and call each peak
+        results = (array > numpy.roll(array, 1)) & (array > numpy.roll(array, -1))
+        indexes = numpy.where(results)
+        for index in indexes[0]:
+            peaks.append(Peak(index))
+        #history = [array[0], array[1]] # Last 2 values
+        #for i, value in enumerate(array[2:]):
+        #    if history[1] > history[0] and history[1] > value:
+        #        # history[1] is a peak
+        #        peaks.append(Peak(i+1-WIDTH, history[1]))
+        #    history[0] = history[1] # Shift history values
+        #    history[1] = value
+    find_peaks()
         
-    # Calculate the number of reads in each peak
-    for peak in peaks:
-        reads = get_window(data, peak.start, peak.end, keys)
-        peak.value = sum([read[direction] for read in reads])
+    def calculate_reads():
+        # Calculate the number of reads in each peak
+        for peak in peaks:
+            reads = get_window(data, peak.start, peak.end, keys)
+            peak.value = sum([read[direction] for read in reads])
+    calculate_reads()
         
     before = len(peaks)
         
-    # Process the exclusion zone
-    peak_keys = make_peak_keys(peaks)
-    peaks_by_value = peaks[:]
-    peaks_by_value.sort(key=lambda peak: -peak.value)
-    for peak in peaks_by_value:
-        peak.safe = True
-        window = get_window(peaks, peak.index-exclusion, peak.index+exclusion, peak_keys)
-        for excluded in window:
-            if excluded.safe:
-                continue
-            i = get_index(excluded.index, peak_keys)
-            del peak_keys[i]
-            del peaks[i]
+    def perform_exclusion():
+        # Process the exclusion zone
+        peak_keys = make_peak_keys(peaks)
+        peaks_by_value = peaks[:]
+        peaks_by_value.sort(key=lambda peak: -peak.value)
+        for peak in peaks_by_value:
+            peak.safe = True
+            window = get_window(peaks, peak.index-exclusion, peak.index+exclusion, peak_keys)
+            for excluded in window:
+                if excluded.safe:
+                    continue
+                i = get_index(excluded.index, peak_keys)
+                del peak_keys[i]
+                del peaks[i]
+    perform_exclusion()
             
     after = len(peaks)
     logging.debug('%d of %d peaks (%d%%) survived exclusion' % (after, before, after*100/before))
@@ -201,5 +211,7 @@ def run():
             process_file(path, options.sigma, options.exclusion)
             
 if __name__ == '__main__':
-    run()
+    #run()
+    import cProfile
+    cProfile.run('run()', 'profile.bin')
             
