@@ -45,24 +45,28 @@ def parse_line(line):
 
 LINE = None
 current_chromosome = None
+STOP = False
 
 
 def chromosome_iterator(reader):
-    global LINE, current_chromosome
+    global LINE, STOP, current_chromosome
     chromosomes = []
     reader.next()
     def reads_iterator():
-        global LINE, current_chromosome
-        yield parse_line(LINE)
+        global LINE, STOP, current_chromosome
         while True:
-            LINE = reader.next()
+            try:
+                LINE = reader.next()
+            except StopIteration:
+                STOP = True
+                raise
             if LINE[0] != current_chromosome:
                 current_chromosome = LINE[0]
                 return
             yield parse_line(LINE)
     LINE = reader.next()
     current_chromosome = LINE[0]
-    while True:
+    while not STOP:
         yield current_chromosome, reads_iterator()
                 
 
@@ -181,7 +185,7 @@ def process_chromosome(cname, data, writer, sigma, exclusion):
     
     
     
-def process_file(path, sigma, exclusion):
+def process_file(path, sigma, exclusion, chromosome_limit):
     
     global WIDTH
     WIDTH = sigma * 5
@@ -197,7 +201,9 @@ def process_file(path, sigma, exclusion):
     output_dir = os.path.join(directory, 'genetrack_s%de%d' % (sigma, exclusion))
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
-    output_path = os.path.join(output_dir, fname+'O_%s.txt' % fname)
+    if chromosome_limit:
+        fname = chromosome_limit + '_' + fname
+    output_path = os.path.join(output_dir, 'O_%s.txt' % fname)
     
     reader = csv.reader(open(path,'rU'), delimiter='\t')
     #chromosomes = parse_reads(reader)
@@ -205,7 +211,10 @@ def process_file(path, sigma, exclusion):
     writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
     
     for cname, data in chromosome_iterator(reader):
-        process_chromosome(cname, list(data), writer, sigma, exclusion)
+        if not chromosome_limit or chromosome_limit == cname:
+            process_chromosome(cname, list(data), writer, sigma, exclusion)
+        else:
+            list(data) # Consume iterator even if not used
     
 
 usage = '''
@@ -234,6 +243,8 @@ def run():
                       help='Sigma to use when smoothing reads to call peaks. Default 5.')
     parser.add_option('-e', action='store', type='int', dest='exclusion', default=20,
                       help='Exclusion zone around each peak that prevents others from being called. Default 20.')
+    parser.add_option('-c', action='store', type='string', dest='chromosome', default='',
+                      help='Chromosome and strand (ex chr11+) to limit to. Default process all.')
     parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages')
     parser.add_option('-q', action='store_true', dest='quiet', help='Quiet mode: suppresses all non-error messages')
     (options, args) = parser.parse_args()
@@ -254,20 +265,16 @@ def run():
             for fname in os.listdir(path):
                 fpath = os.path.join(path, fname)
                 if os.path.isfile(fpath) and not fname.startswith('.'): 
-                    process_file(fpath, options.sigma, options.exclusion)
+                    process_file(fpath, options.sigma, options.exclusion, options.chromosome)
         else:
-            process_file(path, options.sigma, options.exclusion)
+            process_file(path, options.sigma, options.exclusion, options.chromosome)
             
 if __name__ == '__main__':
-    '''reader = csv.reader(open('data/INPUT_genetrack_Reb1_rep2.idx', 'rU'), delimiter='\t')
-    it = chromosome_iterator(reader)
-    cname, itt = it.next()
-    for obj in itt:
-        print obj
-    cname, itt = it.next()
-    for obj in itt:
-        print obj'''
-    #run()
-    import cProfile
-    cProfile.run('run()', 'profilev6.bin')
+    #reader = csv.reader(open('data/INPUT_genetrack_Reb1_rep2.idx', 'rU'), delimiter='\t')
+    #it = chromosome_iterator(reader)
+    #for cname, data in it:
+    #    print cname, len(list(data))
+    run()
+    #import cProfile
+    #cProfile.run('run()', 'profilev6.bin')
             
