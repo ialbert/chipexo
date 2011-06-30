@@ -185,14 +185,8 @@ def process_chromosome(cname, data, writer, sigma, exclusion):
     
     
     
-def process_file(path, sigma, exclusion, chromosome_limit):
-    
-    global WIDTH
-    WIDTH = sigma * 5
-    
-    logging.info('Processing file "%s"' % path)
-    
-    directory, fname = os.path.split(path)
+def get_output_path(input_path, sigma, exclusion, chromosome_limit):
+    directory, fname = os.path.split(input_path)
     
     if fname.startswith('INPUT'):
         fname = fname[5:].strip('_') # Strip "INPUT_" from the file if present
@@ -203,7 +197,17 @@ def process_file(path, sigma, exclusion, chromosome_limit):
         os.mkdir(output_dir)
     if chromosome_limit:
         fname = chromosome_limit + '_' + fname
-    output_path = os.path.join(output_dir, 'O_%s.txt' % fname)
+    return os.path.join(output_dir, 'O_%s.txt' % fname)
+    
+    
+def process_file(path, sigma, exclusion, chromosome_limit):
+    
+    global WIDTH
+    WIDTH = sigma * 5
+    
+    logging.info('Processing file "%s"' % path)
+    
+    output_path = get_output_path(path, sigma, exclusion, chromosome_limit)
     
     reader = csv.reader(open(path,'rU'), delimiter='\t')
     #chromosomes = parse_reads(reader)

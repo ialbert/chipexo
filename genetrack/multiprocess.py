@@ -1,5 +1,7 @@
 from optparse import OptionParser, IndentedHelpFormatter
-import csv, os, sys, subprocess
+import csv, os, sys, subprocess, shutil
+
+from genetrack import get_output_path
 
 def chromosome_list(fpath):
     file = open(fpath, 'rU')
@@ -13,13 +15,22 @@ def chromosome_list(fpath):
 
 
 def process_file(fpath, exclusion, sigma):
-    print fpath, args
     chroms = chromosome_list(fpath)
+    outputs = []
+    # Process each chromosome
     for chrom in chroms:
         c = 'python genetrack.py %s -s %d -e %d -c %s' % (fpath, sigma, exclusion, chrom)
         p = subprocess.Popen(c, shell=True)
+        p.wait()
+        output_path = get_output_path(fpath, sigma, exclusion, chrom)
+        outputs.append(output_path)
+    # Merge together output files
+    real_output = open(get_output_path(fpath, sigma, exclusion, ''), 'wt')
+    for output in outputs:
+        shutil.copyfileobj(open(output, 'rt'), real_output)
+        os.unlink(output)
+    real_output.close
     
-    p.wait()
            
 usage = '''
 input_paths may be:
