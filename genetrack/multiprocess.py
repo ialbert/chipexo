@@ -1,5 +1,5 @@
 from optparse import OptionParser, IndentedHelpFormatter
-import csv, os, sys, subprocess, shutil
+import csv, os, sys, subprocess, shutil, threading
 
 from genetrack import get_output_path
 
@@ -13,17 +13,33 @@ def chromosome_list(fpath):
             chromosomes.add(chr)
     return chromosomes
 
+class ProcessFileThread(threading.Thread):
+    semaphore = threading.Semaphore(1)
+    def __init__(self, command):
+        threading.Thread.__init__(self)
+        self.command = command
+    def run(self):
+        ProcessFileThread.semaphore.acquire()
+        p = subprocess.Popen(self.command, shell=True)
+        p.wait()
+        ProcessFileThread.semaphore.release()
+
 
 def process_file(fpath, exclusion, sigma):
     chroms = chromosome_list(fpath)
     outputs = []
+    threads = []
     # Process each chromosome
     for chrom in chroms:
         c = 'python genetrack.py %s -s %d -e %d -c %s' % (fpath, sigma, exclusion, chrom)
-        p = subprocess.Popen(c, shell=True)
-        p.wait()
+        t = ProcessFileThread(c)
+        t.start()
+        threads.append(t)
         output_path = get_output_path(fpath, sigma, exclusion, chrom)
         outputs.append(output_path)
+    # Wait for completion
+    for thread in threads:
+        thread.join()
     # Merge together output files
     real_output = open(get_output_path(fpath, sigma, exclusion, ''), 'wt')
     for output in outputs:
@@ -55,9 +71,11 @@ def run():
                       help='Sigma to use when smoothing reads to call peaks. Default 5.')
     parser.add_option('-e', action='store', type='int', dest='exclusion', default=20,
                       help='Exclusion zone around each peak that prevents others from being called. Default 20.')
-    parser.add_option('-a', action='store', type='string', dest='args', default='',
-                      help='Argument string to pass to genetrack.py')
+    parser.add_option('-p', action='store', type='int', dest='processes', default=1,
+                      help='Number of processes to run concurrently')
     (options, args) = parser.parse_args()
+    
+    ProcessFileThread.semaphore = threading.Semaphore(options.processes)
 
     if not args:
         parser.print_help()
