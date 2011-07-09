@@ -131,14 +131,14 @@ def normal_array(width, sigma, normalize=True):
 
     return values
 
-def call_peaks(array, data, keys, direction, exclusion):
+def call_peaks(array, data, keys, direction, options):
     peaks = []
     def find_peaks():
         # Go through the array and call each peak
         results = (array > numpy.roll(array, 1)) & (array > numpy.roll(array, -1))
         indexes = numpy.where(results)
         for index in indexes[0]:
-            peaks.append(Peak(int(index)-WIDTH, exclusion))
+            peaks.append(Peak(int(index)-WIDTH, options.exclusion))
     find_peaks()
         
     def calculate_reads():
@@ -157,7 +157,7 @@ def call_peaks(array, data, keys, direction, exclusion):
         peaks_by_value.sort(key=lambda peak: -peak.value)
         for peak in peaks_by_value:
             peak.safe = True
-            window = get_window(peaks, peak.index-exclusion, peak.index+exclusion, peak_keys)
+            window = get_window(peaks, peak.index-options.exclusion, peak.index+options.exclusion, peak_keys)
             for excluded in window:
                 if excluded.safe:
                     continue
@@ -171,14 +171,14 @@ def call_peaks(array, data, keys, direction, exclusion):
             
     return peaks
     
-def process_chromosome(cname, data, writer, sigma, exclusion):
+def process_chromosome(cname, data, writer, options):
     
     logging.debug('Processing chromosome %s' % cname)
     keys = make_keys(data)
     # Create the arrays that hold the sum of the normals
     forward_array = allocate_array(data, WIDTH)
     reverse_array = allocate_array(data, WIDTH)
-    normal = normal_array(WIDTH, sigma)
+    normal = normal_array(WIDTH, options.sigma)
     
     
     def populate_array():
@@ -193,9 +193,9 @@ def process_chromosome(cname, data, writer, sigma, exclusion):
     populate_array()
         
     logging.debug('Calling forward strand')
-    forward_peaks = call_peaks(forward_array, data, keys, 1, exclusion=exclusion)
+    forward_peaks = call_peaks(forward_array, data, keys, 1, options)
     logging.debug('Calling reverse strand')
-    reverse_peaks = call_peaks(reverse_array, data, keys, 2, exclusion=exclusion)
+    reverse_peaks = call_peaks(reverse_array, data, keys, 2, options)
 
     # Convert chromosome name in preparation for writing our
     cname = convert_data(cname, 'zeropad', 'numeric')
@@ -208,29 +208,29 @@ def process_chromosome(cname, data, writer, sigma, exclusion):
     
     
     
-def get_output_path(input_path, sigma, exclusion, chromosome_limit):
+def get_output_path(input_path, options):
     directory, fname = os.path.split(input_path)
     
     if fname.startswith('INPUT'):
         fname = fname[5:].strip('_') # Strip "INPUT_" from the file if present
     fname = ''.join(fname.split('.')[:-1]) # Strip extension (will be re-added as appropriate)
 
-    output_dir = os.path.join(directory, 'genetrack_s%de%d' % (sigma, exclusion))
+    output_dir = os.path.join(directory, 'genetrack_s%de%d' % (options.sigma, options.exclusion))
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
-    if chromosome_limit:
-        fname = chromosome_limit + '_' + fname
-    return os.path.join(output_dir, '%s_s%de%d.txt' % (fname, sigma, exclusion))
+    if options.chromosome:
+        fname = options.chromosome + '_' + fname
+    return os.path.join(output_dir, '%s_s%de%d.txt' % (fname, options.sigma, options.exclusion))
     
     
-def process_file(path, sigma, exclusion, chromosome_limit):
+def process_file(path, options):
     
     global WIDTH
-    WIDTH = sigma * 5
+    WIDTH = options.sigma * 5
     
     logging.info('Processing file "%s"' % path)
     
-    output_path = get_output_path(path, sigma, exclusion, chromosome_limit)
+    output_path = get_output_path(path, options)
     
     reader = csv.reader(open(path,'rU'), delimiter='\t')
     #chromosomes = parse_reads(reader)
@@ -238,8 +238,8 @@ def process_file(path, sigma, exclusion, chromosome_limit):
     writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
     
     for cname, data in chromosome_iterator(reader):
-        if not chromosome_limit or chromosome_limit == cname:
-            process_chromosome(cname, list(data), writer, sigma, exclusion)
+        if not options.chromosome or options.chromosome == cname:
+            process_chromosome(cname, list(data), writer, options)
         else:
             list(data) # Consume iterator even if not used
     
@@ -292,9 +292,9 @@ def run():
             for fname in os.listdir(path):
                 fpath = os.path.join(path, fname)
                 if os.path.isfile(fpath) and not fname.startswith('.'): 
-                    process_file(fpath, options.sigma, options.exclusion, options.chromosome)
+                    process_file(fpath, options)
         else:
-            process_file(path, options.sigma, options.exclusion, options.chromosome)
+            process_file(path, options)
             
 if __name__ == '__main__':
     #reader = csv.reader(open('data/INPUT_genetrack_Reb1_rep2.idx', 'rU'), delimiter='\t')

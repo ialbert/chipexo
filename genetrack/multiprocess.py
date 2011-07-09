@@ -1,5 +1,5 @@
 from optparse import OptionParser, IndentedHelpFormatter
-import csv, os, sys, subprocess, shutil, threading
+import csv, os, sys, subprocess, shutil, threading, logging
 
 from genetrack import get_output_path
 
@@ -93,4 +93,4 @@ def run():
             process_file(path, options.exclusion, options.sigma)
             
 if __name__ == '__main__':
-    run()
+    logging.error('Multiprocess script is currently not working')
