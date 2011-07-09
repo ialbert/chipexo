@@ -8,10 +8,10 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 WIDTH = 100
 
 class Peak(object):
-    def __init__(self, index, width):
+    def __init__(self, index, pos_width, neg_width):
         self.index = index
-        self.start = index - width//2
-        self.end = index + width//2
+        self.start = index - neg_width
+        self.end = index + pos_width
         self.value = 0
         self.deleted = False
         self.safe = False
@@ -138,7 +138,11 @@ def call_peaks(array, data, keys, direction, options):
         results = (array > numpy.roll(array, 1)) & (array > numpy.roll(array, -1))
         indexes = numpy.where(results)
         for index in indexes[0]:
-            peaks.append(Peak(int(index)-WIDTH, options.exclusion))
+            pos = options.down_width or options.exclusion // 2
+            neg = options.up_width or options.exclusion // 2
+            if direction == 2: # Reverse strand
+                pos, neg = neg, pos # Swap positive and negative widths
+            peaks.append(Peak(int(index)-WIDTH, pos, neg))
     find_peaks()
         
     def calculate_reads():
@@ -270,6 +274,10 @@ def run():
                       help='Sigma to use when smoothing reads to call peaks. Default 5.')
     parser.add_option('-e', action='store', type='int', dest='exclusion', default=20,
                       help='Exclusion zone around each peak that prevents others from being called. Default 20.')
+    parser.add_option('-u', action='store', type='int', dest='up_width', default=0,
+                      help='Upstream width of called peaks. Default uses half exclusion zone.')
+    parser.add_option('-d', action='store', type='int', dest='down_width', default=0,
+                      help='Downstream width of called peaks. Default uses half exclusion zone.')
     parser.add_option('-c', action='store', type='string', dest='chromosome', default='',
                       help='Chromosome (ex chr11) to limit to. Default process all.')
     parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages')
