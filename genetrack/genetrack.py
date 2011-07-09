@@ -1,6 +1,8 @@
 from optparse import OptionParser, IndentedHelpFormatter
 import csv, logging, numpy, math, bisect, sys, os
 
+from chrtrans import convert_data
+
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 WIDTH = 100
@@ -39,6 +41,25 @@ class CSVReaderWrapper(object):
         else:
             return aaa
        
+def is_valid(line):
+    if len(line) != 5:
+        return False
+    try:
+        [int(i) for i in line[1:]]
+        return True
+    except ValueError:
+        return False
+       
+def next_valid(reader):
+    LINE = reader.next()
+    s = 0
+    while not is_valid(LINE):
+        LINE = reader.next()
+        s += 1
+    if s > 0:
+        logging.info('Skipped %d line(s) of file' % s)
+    return LINE
+       
 def parse_line(line):
     cname, index, forward, reverse = line[:4]
     return [int(index), int(forward), int(reverse)]
@@ -51,12 +72,11 @@ STOP = False
 def chromosome_iterator(reader):
     global LINE, STOP, current_chromosome
     chromosomes = []
-    reader.next()
     def reads_iterator():
         global LINE, STOP, current_chromosome
         while True:
             try:
-                LINE = reader.next()
+                LINE = next_valid(reader)
             except StopIteration:
                 STOP = True
                 raise
@@ -64,7 +84,7 @@ def chromosome_iterator(reader):
                 current_chromosome = LINE[0]
                 return
             yield parse_line(LINE)
-    LINE = reader.next()
+    LINE = next_valid(reader)
     current_chromosome = LINE[0]
     while not STOP:
         yield current_chromosome, reads_iterator()
@@ -177,6 +197,9 @@ def process_chromosome(cname, data, writer, sigma, exclusion):
     logging.debug('Calling reverse strand')
     reverse_peaks = call_peaks(reverse_array, data, keys, 2, exclusion=exclusion)
 
+    # Convert chromosome name in preparation for writing our
+    cname = convert_data(cname, 'zeropad', 'numeric')
+    
     
     for peak in forward_peaks:
         writer.writerow((cname, '+', peak.start, peak.end, peak.value))
@@ -197,7 +220,7 @@ def get_output_path(input_path, sigma, exclusion, chromosome_limit):
         os.mkdir(output_dir)
     if chromosome_limit:
         fname = chromosome_limit + '_' + fname
-    return os.path.join(output_dir, 'O_%s.txt' % fname)
+    return os.path.join(output_dir, '%s_s%de%d.txt' % (fname, sigma, exclusion))
     
     
 def process_file(path, sigma, exclusion, chromosome_limit):
@@ -248,7 +271,7 @@ def run():
     parser.add_option('-e', action='store', type='int', dest='exclusion', default=20,
                       help='Exclusion zone around each peak that prevents others from being called. Default 20.')
     parser.add_option('-c', action='store', type='string', dest='chromosome', default='',
-                      help='Chromosome and strand (ex chr11+) to limit to. Default process all.')
+                      help='Chromosome (ex chr11) to limit to. Default process all.')
     parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages')
     parser.add_option('-q', action='store_true', dest='quiet', help='Quiet mode: suppresses all non-error messages')
     (options, args) = parser.parse_args()
