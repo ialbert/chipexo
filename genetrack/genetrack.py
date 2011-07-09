@@ -1,5 +1,5 @@
 from optparse import OptionParser, IndentedHelpFormatter
-import csv, logging, numpy, math, bisect, sys, os
+import csv, logging, numpy, math, bisect, sys, os, copy
 
 from chrtrans import convert_data
 
@@ -40,6 +40,13 @@ class CSVReaderWrapper(object):
             return last
         else:
             return aaa
+       
+def is_int(i):
+    try:
+        int(i)
+        return True
+    except ValueError:
+        return False
        
 def is_valid(line):
     if len(line) != 5:
@@ -232,7 +239,7 @@ def process_file(path, options):
     global WIDTH
     WIDTH = options.sigma * 5
     
-    logging.info('Processing file "%s"' % path)
+    logging.info('Processing file "%s" with s=%d, e=%d' % (path, options.sigma, options.exclusion))
     
     output_path = get_output_path(path, options)
     
@@ -280,6 +287,8 @@ def run():
                       help='Downstream width of called peaks. Default uses half exclusion zone.')
     parser.add_option('-c', action='store', type='string', dest='chromosome', default='',
                       help='Chromosome (ex chr11) to limit to. Default process all.')
+    parser.add_option('-f', action='store', type='string', dest='config_file', default='',
+                      help='Optional file to load sigma and exclusion parameters per input file.')
     parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages')
     parser.add_option('-q', action='store_true', dest='quiet', help='Quiet mode: suppresses all non-error messages')
     (options, args) = parser.parse_args()
@@ -289,20 +298,42 @@ def run():
     if options.quiet:
         logging.getLogger().setLevel(logging.ERROR) # Silence all non-error messages
         
+        
     if not args:
         parser.print_help()
         sys.exit(1)
+        
+    CONFIG = {}
+    if options.config_file:
+        logging.info('Loading configuration file "%s"' % options.config_file)
+        reader = csv.reader(open(options.config_file, 'rt'), delimiter='\t')
+        for line in reader:
+            if len(line) == 3 and is_int(line[1]) and is_int(line[2]):
+                CONFIG[line[0]] = {'sigma':line[1], 'exclusion':line[2]}
+        logging.info('Loaded configuration settings for %d files.' % len(CONFIG))
         
     for path in args:
         if not os.path.exists(path):
             parser.error('Path %s does not exist.' % path)
         if os.path.isdir(path):
+            files = []
             for fname in os.listdir(path):
                 fpath = os.path.join(path, fname)
                 if os.path.isfile(fpath) and not fname.startswith('.'): 
-                    process_file(fpath, options)
+                    files.append(fpath)
         else:
-            process_file(path, options)
+            files = [path]
+        for fpath in files:
+            dir, fname = os.path.split(fpath)
+            if fname in CONFIG:
+                current_options = copy.deepcopy(options)
+                current_options.sigma = CONFIG[fname]['sigma']
+                current_options.exclusion = CONFIG[fname]['exclusion']
+            else:
+                if options.config_file:
+                    logging.warning('File "%s" not found in config file' % fname)
+                current_options = options
+            process_file(fpath, current_options)
             
 if __name__ == '__main__':
     #reader = csv.reader(open('data/INPUT_genetrack_Reb1_rep2.idx', 'rU'), delimiter='\t')
