@@ -306,7 +306,7 @@ def run():
     CONFIG = {}
     if options.config_file:
         logging.info('Loading configuration file "%s"' % options.config_file)
-        reader = csv.reader(open(options.config_file, 'rt'), delimiter='\t')
+        reader = csv.reader(open(options.config_file, 'rU'), delimiter='\t')
         for line in reader:
             if len(line) == 3 and is_int(line[1]) and is_int(line[2]):
                 CONFIG[line[0]] = {'sigma':int(line[1]), 'exclusion':int(line[2])}
