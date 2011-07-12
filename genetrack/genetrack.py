@@ -309,7 +309,7 @@ def run():
         reader = csv.reader(open(options.config_file, 'rt'), delimiter='\t')
         for line in reader:
             if len(line) == 3 and is_int(line[1]) and is_int(line[2]):
-                CONFIG[line[0]] = {'sigma':line[1], 'exclusion':line[2]}
+                CONFIG[line[0]] = {'sigma':int(line[1]), 'exclusion':int(line[2])}
         logging.info('Loaded configuration settings for %d files.' % len(CONFIG))
         
     for path in args:

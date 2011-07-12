@@ -1,0 +1,2 @@
+file	sigma	exclusion
+INPUT_genetrack_Reb1_rep2.idx	5	30
