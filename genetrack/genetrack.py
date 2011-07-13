@@ -18,29 +18,6 @@ class Peak(object):
     def __repr__(self):
         return '[%d] %d' % (self.index, self.value)
 
-def parse_reads(reader):
-    chromosomes = {}
-    reader.next()
-    for line in reader:
-        cname, index, forward, reverse = line[:4]
-        if cname not in chromosomes:
-            chromosomes[cname] = []
-        chromosomes[cname].append([int(index), int(forward), int(reverse)])
-    return chromosomes
-
-class CSVReaderWrapper(object):
-    ''' A wrapper around a CSV reader that can rewind one line '''
-    def __init__(self, reader):
-        last = None
-        rewound = False
-    def rewind(self):
-        rewound = True
-    def next(self):
-        if rewound:
-            return last
-        else:
-            return aaa
-       
 def is_int(i):
     try:
         int(i)
@@ -48,6 +25,13 @@ def is_int(i):
     except ValueError:
         return False
        
+
+       
+def next_valid(reader):
+
+    return LINE
+       
+
 def is_valid(line):
     if len(line) not in [4, 5]:
         return False
@@ -56,46 +40,59 @@ def is_valid(line):
         return True
     except ValueError:
         return False
-       
-def next_valid(reader):
-    LINE = reader.next()
-    s = 0
-    while not is_valid(LINE):
-        LINE = reader.next()
-        s += 1
-    if s > 0:
-        logging.info('Skipped %d line(s) of file' % s)
-    return LINE
-       
+        
 def parse_line(line):
     cname, index, forward, reverse = line[:4]
     return [int(index), int(forward), int(reverse)]
-
-LINE = None
-current_chromosome = None
-STOP = False
-
-
-def chromosome_iterator(reader):
-    global LINE, STOP, current_chromosome
-    chromosomes = []
-    def reads_iterator():
-        global LINE, STOP, current_chromosome
-        while True:
+        
+class ChromosomeManager(object):
+    ''' Manages a CSV reader of an index file to only load one chrom at a time '''
+    def __init__(self, reader):
+        self.done = False
+        self.reader = reader
+        self.next_valid()
+        
+    def next(self):
+        self.line = self.reader.next()
+        
+    def next_valid(self):
+        ''' Advance to the next valid line in the reader '''
+        self.line = self.reader.next()
+        s = 0
+        while not is_valid(self.line):
+            self.line = self.reader.next()
+            s += 1
+        if s > 0:
+            logging.info('Skipped initial %d line(s) of file' % s)
+            
+    def chromosome_name(self):
+        ''' Return the name of the chromosome about to be loaded '''
+        return self.line[0]
+        
+    def load_chromosome(self):
+        ''' Load the current chromosome into an array and return it '''
+        cname = self.chromosome_name()
+        data = []
+        while self.line[0] == cname:
+            data.append(parse_line(self.line))
             try:
-                LINE = next_valid(reader)
+                self.next()
             except StopIteration:
-                STOP = True
-                raise
-            if LINE[0] != current_chromosome:
-                current_chromosome = LINE[0]
-                return
-            yield parse_line(LINE)
-    LINE = next_valid(reader)
-    current_chromosome = LINE[0]
-    while not STOP:
-        yield current_chromosome, reads_iterator()
-                
+                self.done = True
+                break
+        return data
+    
+    def skip_chromosome(self):
+        ''' Skip the current chromosome, discarding data '''
+        cname = self.chromosome_name()
+        while self.line[0] == cname:
+            try:
+                self.next()
+            except StopIteration:
+                self.done = True
+                break
+    
+            
 
 
 def make_keys(data):
@@ -276,10 +273,13 @@ def process_file(path, options):
     writer = csv.writer(open(output_path, 'wt'), delimiter='\t')
     writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
     
-    for cname, data in chromosome_iterator(reader):
-        print cname
+    manager = ChromosomeManager(reader)
+    
+        
+    while not manager.done:
+        cname = manager.chromosome_name()
         if not options.chromosome or options.chromosome == cname: # Should we process this chromosome?
-            data = list(data)
+            data = manager.load_chromosome()
             keys = make_keys(data)
             lo, hi = get_range(data)
             for chunk in get_chunks(lo, hi, size=options.chunk_size * 10e+6, overlap=WIDTH):
@@ -288,7 +288,7 @@ def process_file(path, options):
                 process_chromosome(cname, window, writer, process_bounds, options)
             #process_chromosome(cname, list(data), writer, options)
         else:
-            collections.deque(data, maxlen=0) # Fast way to consume iterator; put in 0-length deque
+            manager.skip_chromosome()
     
 
 usage = '''
