@@ -208,9 +208,9 @@ def call_peaks(array, shift, data, keys, direction, options):
     
 def process_chromosome(cname, data, writer, process_bounds, options):
     ''' Process a chromosome. Takes the chromosome name, list of reads, a CSV writer
-    to write processes results to, the bounds (2-tuple) to write result in, and options. '''
+    to write processes results to, the bounds (2-tuple) to write results in, and options. '''
     
-    logging.debug('Processing chromosome %s' % cname)
+    logging.info('Processing chromosome %s indexes %d-%d' % (cname, process_bounds[0], process_bounds[1]))
     keys = make_keys(data)
     # Create the arrays that hold the sum of the normals
     forward_array, forward_shift = allocate_array(data, WIDTH)
@@ -239,9 +239,11 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     
     
     for peak in forward_peaks:
-        writer.writerow((cname, '+', peak.start, peak.end, peak.value))
+        if process_bounds[0] < peak.start < process_bounds[1]:
+            writer.writerow((cname, '+', peak.start, peak.end, peak.value))
     for peak in reverse_peaks:
-        writer.writerow((cname, '-', peak.start, peak.end, peak.value))   
+        if process_bounds[0] < peak.start < process_bounds[1]:
+            writer.writerow((cname, '-', peak.start, peak.end, peak.value))   
     
     
     
@@ -275,11 +277,14 @@ def process_file(path, options):
     writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
     
     for cname, data in chromosome_iterator(reader):
-        if not options.chromosome or options.chromosome == cname:
-            print cname
+        if not options.chromosome or options.chromosome == cname: # Should we process this chromosome?
             data = list(data)
+            keys = make_keys(data)
             lo, hi = get_range(data)
-            print get_chunks(lo, hi, size=100000, overlap=WIDTH)
+            for chunk in get_chunks(lo, hi, size=100000, overlap=WIDTH):
+                (slice_start, slice_end), process_bounds = chunk
+                window = get_window(data, slice_start, slice_end, keys)
+                process_chromosome(cname, window, writer, process_bounds, options)
             #process_chromosome(cname, list(data), writer, options)
         else:
             list(data) # Consume iterator even if not used
