@@ -1,5 +1,5 @@
 from optparse import OptionParser, IndentedHelpFormatter
-import csv, logging, numpy, math, bisect, sys, os, copy
+import csv, logging, numpy, math, bisect, sys, os, copy, collections
 
 from chrtrans import convert_data
 
@@ -49,7 +49,7 @@ def is_int(i):
         return False
        
 def is_valid(line):
-    if len(line) != 5:
+    if len(line) not in [4, 5]:
         return False
     try:
         [int(i) for i in line[1:]]
@@ -277,17 +277,18 @@ def process_file(path, options):
     writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
     
     for cname, data in chromosome_iterator(reader):
+        print cname
         if not options.chromosome or options.chromosome == cname: # Should we process this chromosome?
             data = list(data)
             keys = make_keys(data)
             lo, hi = get_range(data)
-            for chunk in get_chunks(lo, hi, size=100000, overlap=WIDTH):
+            for chunk in get_chunks(lo, hi, size=options.chunk_size * 10e+6, overlap=WIDTH):
                 (slice_start, slice_end), process_bounds = chunk
                 window = get_window(data, slice_start, slice_end, keys)
                 process_chromosome(cname, window, writer, process_bounds, options)
             #process_chromosome(cname, list(data), writer, options)
         else:
-            list(data) # Consume iterator even if not used
+            collections.deque(data, maxlen=0) # Fast way to consume iterator; put in 0-length deque
     
 
 usage = '''
@@ -324,6 +325,8 @@ def run():
                       help='Chromosome (ex chr11) to limit to. Default process all.')
     parser.add_option('-f', action='store', type='string', dest='config_file', default='',
                       help='Optional file to load sigma and exclusion parameters per input file.')
+    parser.add_option('-k', action='store', type='int', dest='chunk_size', default=10,
+                      help='Size, in millions of base pairs, to chunk each chromosome into when processing. Each 1 million size uses approximately 20MB of memory. Default 10.')
     parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages')
     parser.add_option('-q', action='store_true', dest='quiet', help='Quiet mode: suppresses all non-error messages')
     (options, args) = parser.parse_args()
