@@ -1,17 +1,8 @@
 from optparse import OptionParser, IndentedHelpFormatter
-import csv, os, sys, subprocess, shutil, threading, logging
+import csv, os, sys, subprocess, shutil, threading, logging, tempfile
 
-from genetrack import get_output_path
+from genetrack import get_output_path, ChromosomeManager
 
-def chromosome_list(fpath):
-    file = open(fpath, 'rU')
-    chromosomes = set()
-    r = csv.reader(file, delimiter='\t')
-    for line in r:
-        chr = line[0]
-        if chr not in chromosomes:
-            chromosomes.add(chr)
-    return chromosomes
 
 class ProcessFileThread(threading.Thread):
     semaphore = threading.Semaphore(1)
@@ -25,23 +16,40 @@ class ProcessFileThread(threading.Thread):
         ProcessFileThread.semaphore.release()
 
 
-def process_file(fpath, exclusion, sigma):
-    chroms = chromosome_list(fpath)
+def process_file(fpath, options):
+    options.chromosome = ''
+    
+    manager = ChromosomeManager(csv.reader(open(fpath, 'rU'), delimiter='\t'))
+    inputs = []
     outputs = []
     threads = []
+    temp_dir = tempfile.mkdtemp()
+    logging.info('Preparing file "%s"' % fpath)
+    while not manager.done:
+        name = manager.chromosome_name()
+        logging.info('Preparing chromosome %s' % name)
+        data = manager.load_chromosome()
+        input_name = os.path.join(temp_dir, name + '.txt')
+        f = open(input_name, 'wt')
+        writer = csv.writer(f, delimiter='\t')
+        for read in data:
+            writer.writerow([name] + read)
+        f.close()
+        inputs.append(input_name)
     # Process each chromosome
-    for chrom in chroms:
-        c = 'python genetrack.py %s -s %d -e %d -c %s' % (fpath, sigma, exclusion, chrom)
+    for input in inputs:
+        c = 'python genetrack.py %s -s %d -e %d' % (input, options.sigma, options.exclusion)
         t = ProcessFileThread(c)
         t.start()
         threads.append(t)
-        output_path = get_output_path(fpath, sigma, exclusion, chrom)
+        output_path = get_output_path(input, options)
         outputs.append(output_path)
     # Wait for completion
     for thread in threads:
         thread.join()
     # Merge together output files
-    real_output = open(get_output_path(fpath, sigma, exclusion, ''), 'wt')
+    options.chromosome = ''
+    real_output = open(get_output_path(fpath, options), 'wt')
     for output in outputs:
         shutil.copyfileobj(open(output, 'rt'), real_output)
         os.unlink(output)
@@ -88,9 +96,9 @@ def run():
             for fname in os.listdir(path):
                 fpath = os.path.join(path, fname)
                 if os.path.isfile(fpath) and not fname.startswith('.'): 
-                    process_file(fpath, options.exclusion, options.sigma)
+                    process_file(fpath, options)
         else:
-            process_file(path, options.exclusion, options.sigma)
+            process_file(path, options)
             
 if __name__ == '__main__':
-    logging.error('Multiprocess script is currently not working')
+    run()

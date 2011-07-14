@@ -45,8 +45,7 @@ def is_valid(line):
         return False
         
 def parse_line(line):
-    cname, index, forward, reverse = line[:4]
-    return [int(index), int(forward), int(reverse)]
+    return [int(line[1]), int(line[2]), int(line[3])]
         
 class ChromosomeManager(object):
     ''' Manages a CSV reader of an index file to only load one chrom at a time '''
@@ -298,8 +297,11 @@ def process_file(path, options):
                 (slice_start, slice_end), process_bounds = chunk
                 window = get_window(data, slice_start, slice_end, keys)
                 process_chromosome(cname, window, writer, process_bounds, options)
+            if options.chromosome: # A specific chromosome was specified. We're done, so terminate
+                break
             #process_chromosome(cname, list(data), writer, options)
         else:
+            logging.info('Skipping chromosome %s' % cname)
             manager.skip_chromosome()
     
 
@@ -393,7 +395,7 @@ if __name__ == '__main__':
     #it = chromosome_iterator(reader)
     #for cname, data in it:
     #    print cname, len(list(data))
-    run()
-    #import cProfile
-    #cProfile.run('run()', 'profilev6.bin')
+    #run()
+    import cProfile
+    cProfile.run('run()', 'profilev8.bin')
             
