@@ -3,6 +3,9 @@ import csv, os, sys, subprocess, shutil, threading, logging, tempfile
 
 from genetrack import get_output_path, ChromosomeManager
 
+def shellquote(s):
+    return "'" + s.replace("'", "'\\''") + "'"
+
 
 class ProcessFileThread(threading.Thread):
     semaphore = threading.Semaphore(1)
@@ -38,7 +41,8 @@ def process_file(fpath, options):
         inputs.append(input_name)
     # Process each chromosome
     for input in inputs:
-        c = 'python genetrack.py %s -s %d -e %d' % (input, options.sigma, options.exclusion)
+        c = 'python genetrack.py %s -s %d -e %d -u %d -d %d -k %d' % (
+            input, options.sigma, options.exclusion, options.up_width, options.down_width, options.chunk_size)
         t = ProcessFileThread(c)
         t.start()
         threads.append(t)
@@ -79,6 +83,12 @@ def run():
                       help='Sigma to use when smoothing reads to call peaks. Default 5.')
     parser.add_option('-e', action='store', type='int', dest='exclusion', default=20,
                       help='Exclusion zone around each peak that prevents others from being called. Default 20.')
+    parser.add_option('-u', action='store', type='int', dest='up_width', default=0,
+                      help='Upstream width of called peaks. Default uses half exclusion zone.')
+    parser.add_option('-d', action='store', type='int', dest='down_width', default=0,
+                      help='Downstream width of called peaks. Default uses half exclusion zone.')
+    parser.add_option('-k', action='store', type='int', dest='chunk_size', default=10,
+                      help='Size, in millions of base pairs, to chunk each chromosome into when processing. Each 1 million size uses approximately 20MB of memory. Default 10.')
     parser.add_option('-p', action='store', type='int', dest='processes', default=1,
                       help='Number of processes to run concurrently')
     (options, args) = parser.parse_args()
