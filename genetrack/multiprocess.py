@@ -52,12 +52,14 @@ def process_file(fpath, options):
     for thread in threads:
         thread.join()
     # Merge together output files
+    logging.info('Merging output files')
     options.chromosome = ''
     real_output = open(get_output_path(fpath, options), 'wt')
     for output in outputs:
         shutil.copyfileobj(open(output, 'rt'), real_output)
         os.unlink(output)
-    real_output.close
+    real_output.close()
+    shutil.rmtree(temp_dir)
     
            
 usage = '''
