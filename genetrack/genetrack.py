@@ -185,7 +185,7 @@ def call_peaks(array, shift, data, keys, direction, options):
     def calculate_reads():
         # Calculate the number of reads in each peak
         for peak in peaks:
-            reads = get_window(data, peak.start+shift, peak.end+shift, keys)
+            reads = get_window(data, peak.start, peak.end, keys)
             peak.value = sum([read[direction] for read in reads])
     calculate_reads()
         
