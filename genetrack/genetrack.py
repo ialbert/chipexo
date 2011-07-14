@@ -7,6 +7,9 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 WIDTH = 100
 
+class InvalidFileError(Exception):
+    pass
+
 class Peak(object):
     def __init__(self, index, pos_width, neg_width):
         self.index = index
@@ -50,6 +53,8 @@ class ChromosomeManager(object):
     def __init__(self, reader):
         self.done = False
         self.reader = reader
+        self.processed_chromosomes = []
+        self.current_index = 0
         self.next_valid()
         
     def next(self):
@@ -69,28 +74,33 @@ class ChromosomeManager(object):
         ''' Return the name of the chromosome about to be loaded '''
         return self.line[0]
         
-    def load_chromosome(self):
+    def load_chromosome(self, collect_data=True):
         ''' Load the current chromosome into an array and return it '''
         cname = self.chromosome_name()
+        if cname in self.processed_chromosomes:
+            logging.error('File is not grouped by chromosome')
+            raise InvalidFileError
         data = []
         while self.line[0] == cname:
-            data.append(parse_line(self.line))
+            if collect_data:
+                read = parse_line(self.line)
+                if read[0] < self.current_index:
+                    logging.error('Reads in chromosome %s are not sorted by index. (At index %d)' % (cname, self.current_index))
+                    raise InvalidFileError
+                self.current_index = read[0]
+                data.append(read)
             try:
                 self.next()
             except StopIteration:
                 self.done = True
                 break
+        self.processed_chromosomes.append(cname)
+        self.current_index = 0
         return data
     
     def skip_chromosome(self):
         ''' Skip the current chromosome, discarding data '''
-        cname = self.chromosome_name()
-        while self.line[0] == cname:
-            try:
-                self.next()
-            except StopIteration:
-                self.done = True
-                break
+        self.load_chromosome(collect_data=False)
     
             
 
@@ -199,7 +209,8 @@ def call_peaks(array, shift, data, keys, direction, options):
     perform_exclusion()
             
     after = len(peaks)
-    logging.debug('%d of %d peaks (%d%%) survived exclusion' % (after, before, after*100/before))
+    if before != 0:
+        logging.debug('%d of %d peaks (%d%%) survived exclusion' % (after, before, after*100/before))
             
     return peaks
     
@@ -279,10 +290,11 @@ def process_file(path, options):
     while not manager.done:
         cname = manager.chromosome_name()
         if not options.chromosome or options.chromosome == cname: # Should we process this chromosome?
+            logging.info('Loading chromosome %s' % cname)
             data = manager.load_chromosome()
             keys = make_keys(data)
             lo, hi = get_range(data)
-            for chunk in get_chunks(lo, hi, size=options.chunk_size * 10e+6, overlap=WIDTH):
+            for chunk in get_chunks(lo, hi, size=options.chunk_size * 10 ** 6, overlap=WIDTH):
                 (slice_start, slice_end), process_bounds = chunk
                 window = get_window(data, slice_start, slice_end, keys)
                 process_chromosome(cname, window, writer, process_bounds, options)
@@ -371,7 +383,10 @@ def run():
                 if options.config_file:
                     logging.warning('File "%s" not found in config file' % fname)
                 current_options = options
-            process_file(fpath, current_options)
+            try:
+                process_file(fpath, current_options)
+            except InvalidFileError:
+                logging.error('Unable to process file "%s"' % fpath)
             
 if __name__ == '__main__':
     #reader = csv.reader(open('data/INPUT_genetrack_Reb1_rep2.idx', 'rU'), delimiter='\t')
