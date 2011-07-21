@@ -291,6 +291,8 @@ def process_file(path, options):
         if not options.chromosome or options.chromosome == cname: # Should we process this chromosome?
             logging.info('Loading chromosome %s' % cname)
             data = manager.load_chromosome()
+            if not data:
+                continue
             keys = make_keys(data)
             lo, hi = get_range(data)
             for chunk in get_chunks(lo, hi, size=options.chunk_size * 10 ** 6, overlap=WIDTH):
@@ -395,7 +397,7 @@ if __name__ == '__main__':
     #it = chromosome_iterator(reader)
     #for cname, data in it:
     #    print cname, len(list(data))
-    #run()
-    import cProfile
-    cProfile.run('run()', 'profilev8.bin')
+    run()
+    #import cProfile
+    #cProfile.run('run()', 'profilev8.bin')
             
