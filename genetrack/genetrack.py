@@ -304,7 +304,12 @@ def get_output_path(input_path, options):
         os.mkdir(output_dir)
     if options.chromosome:
         fname = options.chromosome + '_' + fname
-    return os.path.join(output_dir, '%s_s%de%d.txt' % (fname, options.sigma, options.exclusion))
+    attrs = 's%de%d' % (options.sigma, options.exclusion)
+    if options.up_width:
+        attrs += 'u%d' % options.up_width
+    if options.down_width:
+        attrs += 'd%d' % options.down_width
+    return os.path.join(output_dir, '%s_%s.txt' % (fname, attrs))
     
     
 def process_file(path, options):
