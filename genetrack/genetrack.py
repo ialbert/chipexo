@@ -394,7 +394,7 @@ def run():
     parser.add_option('-k', action='store', type='int', dest='chunk_size', default=10,
                       help='Size, in millions of base pairs, to chunk each chromosome into when processing. Each 1 million size uses approximately 20MB of memory. Default 10.')
     parser.add_option('-o', action='store', type='string', dest='format', default='gff',
-                      help='Output format for called peaks. Valid formats are gff (default) and idx.')
+                      help='Output format for called peaks. Valid formats are gff (default) and txt.')
     parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages')
     parser.add_option('-q', action='store_true', dest='quiet', help='Quiet mode: suppresses all non-error messages')
     (options, args) = parser.parse_args()
@@ -403,6 +403,10 @@ def run():
         logging.getLogger().setLevel(logging.DEBUG) # Show all info/debug messages
     if options.quiet:
         logging.getLogger().setLevel(logging.ERROR) # Silence all non-error messages
+        
+        
+    if options.format not in ['gff','txt']:
+        parser.error('%s is not a valid format. Use -h option for a list of valid methods.' % options.format)
         
         
     if not args:
