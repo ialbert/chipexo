@@ -35,17 +35,7 @@ def next_valid(reader):
     return LINE
        
 
-def is_valid(line):
-    if len(line) not in [4, 5]:
-        return False
-    try:
-        [int(i) for i in line[1:]]
-        return True
-    except ValueError:
-        return False
         
-def parse_line(line):
-    return [int(line[1]), int(line[2]), int(line[3])]
         
 class ChromosomeManager(object):
     ''' Manages a CSV reader of an index file to only load one chrom at a time '''
@@ -59,15 +49,36 @@ class ChromosomeManager(object):
     def next(self):
         self.line = self.reader.next()
         
+    def is_valid(self, line):
+        if len(line) not in [4, 5, 9]:
+            return False
+        try:
+            [int(i) for i in line[1:]]
+            self.format = 'idx'
+            return True
+        except ValueError:
+            try:
+                [int(line[4]), int(line[5])]
+                self.format = 'gff'
+                return True
+            except ValueError:
+                return False
+        
     def next_valid(self):
         ''' Advance to the next valid line in the reader '''
         self.line = self.reader.next()
         s = 0
-        while not is_valid(self.line):
+        while not self.is_valid(self.line):
             self.line = self.reader.next()
             s += 1
         if s > 0:
             logging.info('Skipped initial %d line(s) of file' % s)
+            
+    def parse_line(self, line):
+        if self.format == 'idx':
+            return [int(line[1]), int(line[2]), int(line[3])]
+        else:
+            return [int(line[3]), line[6]]
             
     def chromosome_name(self):
         ''' Return the name of the chromosome about to be loaded '''
@@ -79,15 +90,15 @@ class ChromosomeManager(object):
         if cname in self.processed_chromosomes:
             logging.error('File is not grouped by chromosome')
             raise InvalidFileError
-        data = []
+        self.data = []
         while self.line[0] == cname:
             if collect_data:
-                read = parse_line(self.line)
+                read = self.parse_line(self.line)
                 if read[0] < self.current_index:
                     logging.error('Reads in chromosome %s are not sorted by index. (At index %d)' % (cname, self.current_index))
                     raise InvalidFileError
                 self.current_index = read[0]
-                data.append(read)
+                self.add_read(read)
             try:
                 self.next()
             except StopIteration:
@@ -95,7 +106,34 @@ class ChromosomeManager(object):
                 break
         self.processed_chromosomes.append(cname)
         self.current_index = 0
+        data = self.data
+        del self.data # Don't retain reference anymore to save memory
         return data
+    
+    def add_read(self, read):
+        if self.format == 'idx':
+            self.data.append(read)
+        else:
+            index, strand = read
+            if not self.data:
+                self.data.append([index, 0, 0])
+                current_read = self.data[-1]
+            if self.data[-1][0] == index:
+                current_read = self.data[-1]
+            elif self.data[-1][0] < index:
+                self.data.append([index, 0, 0])
+                current_read = self.data[-1]
+            else:
+                logging.error('Reads in chromosome %s are not sorted by index. (At index %d)' % (self.chromosome_name(), index))
+                raise InvalidFileError
+            if strand == '+':
+                current_read[1] += 1
+            elif strand == '-':
+                current_read[2] += 1;
+            else:
+                logging.error('Strand "%s" at chromosome "%s" index %d is not valid.' % (strand, self.chromosome_name(), index))
+                raise InvalidFileError
+        
     
     def skip_chromosome(self):
         ''' Skip the current chromosome, discarding data '''
