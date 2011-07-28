@@ -283,12 +283,18 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     cname = convert_data(cname, 'zeropad', 'numeric')
     
     
+    def write(cname, strand, start, end, value):
+        if options.format == 'gff':
+            writer.writerow((cname, 'genetrack', '.', start, end, value, strand, '.', '.'))
+        else:
+            writer.writerow((cname, strand, start, end, value))
+    
     for peak in forward_peaks:
         if process_bounds[0] < peak.start < process_bounds[1]:
-            writer.writerow((cname, '+', peak.start, peak.end, peak.value))
+            write(cname, '+', peak.start, peak.end, peak.value)
     for peak in reverse_peaks:
         if process_bounds[0] < peak.start < process_bounds[1]:
-            writer.writerow((cname, '-', peak.start, peak.end, peak.value))   
+            write(cname, '-', peak.start, peak.end, peak.value)
     
     
     
@@ -309,7 +315,7 @@ def get_output_path(input_path, options):
         attrs += 'u%d' % options.up_width
     if options.down_width:
         attrs += 'd%d' % options.down_width
-    return os.path.join(output_dir, '%s_%s.txt' % (fname, attrs))
+    return os.path.join(output_dir, '%s_%s.%s' % (fname, attrs, options.format))
     
     
 def process_file(path, options):
@@ -324,7 +330,8 @@ def process_file(path, options):
     reader = csv.reader(open(path,'rU'), delimiter='\t')
     #chromosomes = parse_reads(reader)
     writer = csv.writer(open(output_path, 'wt'), delimiter='\t')
-    writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
+    if options.format == 'idx':
+        writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
     
     manager = ChromosomeManager(reader)
     
@@ -386,6 +393,8 @@ def run():
                       help='Optional file to load sigma and exclusion parameters per input file.')
     parser.add_option('-k', action='store', type='int', dest='chunk_size', default=10,
                       help='Size, in millions of base pairs, to chunk each chromosome into when processing. Each 1 million size uses approximately 20MB of memory. Default 10.')
+    parser.add_option('-o', action='store', type='string', dest='format', default='gff',
+                      help='Output format for called peaks. Valid formats are gff (default) and idx.')
     parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages')
     parser.add_option('-q', action='store_true', dest='quiet', help='Quiet mode: suppresses all non-error messages')
     (options, args) = parser.parse_args()
