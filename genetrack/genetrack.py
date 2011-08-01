@@ -284,10 +284,11 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     
     
     def write(cname, strand, start, end, value):
-        if options.format == 'gff':
-            writer.writerow((cname, 'genetrack', '.', start, end, value, strand, '.', '.'))
-        else:
-            writer.writerow((cname, strand, start, end, value))
+        if value > options.filter:
+            if options.format == 'gff':
+                writer.writerow((cname, 'genetrack', '.', start, end, value, strand, '.', '.'))
+            else:
+                writer.writerow((cname, strand, start, end, value))
     
     for peak in forward_peaks:
         if process_bounds[0] < peak.start < process_bounds[1]:
@@ -389,6 +390,8 @@ def run():
                       help='Upstream width of called peaks. Default uses half exclusion zone.')
     parser.add_option('-d', action='store', type='int', dest='down_width', default=0,
                       help='Downstream width of called peaks. Default uses half exclusion zone.')
+    parser.add_option('-F', action='store', type='int', dest='filter', default='1',
+                      help='Absolute read filter; outputs only peaks with larger read count. Default 1. ')
     parser.add_option('-c', action='store', type='string', dest='chromosome', default='',
                       help='Chromosome (ex chr11) to limit to. Default process all.')
     parser.add_option('-f', action='store', type='string', dest='config_file', default='',
