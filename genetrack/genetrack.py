@@ -163,7 +163,7 @@ def get_range(data):
     hi = max([item[0] for item in data])
     return lo, hi
 
-def get_chunks(lo, hi, size, overlap=100):
+def get_chunks(lo, hi, size, overlap=500):
     ''' Divides a range into chunks of maximum size size. Returns a list of 2-tuples
     (slice_range, process_range), each a 2-tuple (start, end). process_range has zero overlap
     and should be given to process_chromosome as-is, and slice_range is overlapped and should be used to
@@ -305,16 +305,18 @@ def get_output_path(input_path, options):
         fname = fname[5:].strip('_') # Strip "INPUT_" from the file if present
     fname = ''.join(fname.split('.')[:-1]) # Strip extension (will be re-added as appropriate)
 
-    output_dir = os.path.join(directory, 'genetrack_s%de%d' % (options.sigma, options.exclusion))
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-    if options.chromosome:
-        fname = options.chromosome + '_' + fname
-    attrs = 's%de%d' % (options.sigma, options.exclusion)
+    attrs = 's%de%d' % (options.sigma, options.exclusion) # Attribute list to add to file/dir name
     if options.up_width:
         attrs += 'u%d' % options.up_width
     if options.down_width:
         attrs += 'd%d' % options.down_width
+    
+    output_dir = os.path.join(directory, 'genetrack_%s' % attrs)
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    if options.chromosome:
+        fname = options.chromosome + '_' + fname
+
     return os.path.join(output_dir, '%s_%s.%s' % (fname, attrs, options.format))
     
     
