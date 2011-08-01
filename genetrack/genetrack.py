@@ -291,11 +291,11 @@ def process_chromosome(cname, data, writer, process_bounds, options):
                 writer.writerow((cname, strand, start, end, value))
     
     for peak in forward_peaks:
-        if process_bounds[0] < peak.start < process_bounds[1]:
-            write(cname, '+', peak.start, peak.end, peak.value)
+        if process_bounds[0] < peak.index < process_bounds[1]:
+            write(cname, '+', max(peak.index - options.exclusion, 0), peak.index + options.exclusion, peak.value)
     for peak in reverse_peaks:
-        if process_bounds[0] < peak.start < process_bounds[1]:
-            write(cname, '-', peak.start, peak.end, peak.value)
+        if process_bounds[0] < peak.index < process_bounds[1]:
+            write(cname, '-', max(peak.index - options.exclusion, 0), peak.index + options.exclusion, peak.value)
     
     
     
