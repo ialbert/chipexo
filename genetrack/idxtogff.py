@@ -6,8 +6,8 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 def process_file(path):
     logging.info('Processing file "%s"' % path)
     dir, fname = os.path.split(path)
-    fname, ext = fname.split('.')
-    out_path = os.path.join(dir, '%s.gff' % fname)
+    comps = fname.split('.')
+    out_path = os.path.join(dir, '%s.gff' % '.'.join(comps[:-1]))
     r = csv.reader(open(path, 'rU'), delimiter='\t')
     out = csv.writer(open(out_path, 'wt'), delimiter='\t')
     for line in r:
