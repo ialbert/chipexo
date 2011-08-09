@@ -236,7 +236,7 @@ def call_peaks(array, shift, data, keys, direction, options):
         peaks_by_value.sort(key=lambda peak: -peak.value)
         for peak in peaks_by_value:
             peak.safe = True
-            window = get_window(peaks, peak.index-options.exclusion, peak.index+options.exclusion, peak_keys)
+            window = get_window(peaks, peak.index-options.exclusion//2, peak.index+options.exclusion//2, peak_keys)
             for excluded in window:
                 if excluded.safe:
                     continue
