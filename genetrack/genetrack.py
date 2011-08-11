@@ -254,8 +254,11 @@ def call_peaks(array, shift, data, keys, direction, options):
 def process_chromosome(cname, data, writer, process_bounds, options):
     ''' Process a chromosome. Takes the chromosome name, list of reads, a CSV writer
     to write processes results to, the bounds (2-tuple) to write results in, and options. '''
-    
-    logging.info('Processing chromosome %s indexes %d-%d' % (cname, process_bounds[0], process_bounds[1]))
+    if data:
+        logging.info('Processing chromosome %s indexes %d-%d' % (cname, process_bounds[0], process_bounds[1]))
+    else:
+        logging.info('Skipping chromosome %s indexes %d-%d because no reads within these bounds' % (cname, process_bounds[0], process_bounds[1]))
+        return
     keys = make_keys(data)
     # Create the arrays that hold the sum of the normals
     forward_array, forward_shift = allocate_array(data, WIDTH)
