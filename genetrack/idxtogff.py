@@ -3,14 +3,27 @@ from optparse import OptionParser
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
-def process_file(path):
+def get_output_path(input_path, options):
+    directory, fname = os.path.split(input_path)
+    
+    fname = ''.join(fname.split('.')[:-1]) # Strip extension (will be re-added as appropriate)
+    
+    output_dir = os.path.join(directory, 'idxtogff')
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    return os.path.join(output_dir, '%s.gff' % fname)
+
+
+def process_file(path, options):
     logging.info('Processing file "%s"' % path)
-    dir, fname = os.path.split(path)
-    comps = fname.split('.')
-    out_path = os.path.join(dir, '%s.gff' % '.'.join(comps[:-1]))
-    r = csv.reader(open(path, 'rU'), delimiter='\t')
-    out = csv.writer(open(out_path, 'wt'), delimiter='\t')
-    for line in r:
+    
+    output_path = get_output_path(path, options)
+    
+    reader = csv.reader(open(path,'rU'), delimiter='\t')
+    writer = csv.writer(open(output_path, 'wt'), delimiter='\t')
+    
+    for line in reader:
         if len(line) < 4:
             continue
         try:
@@ -18,9 +31,9 @@ def process_file(path):
         except ValueError:
             continue
         for i in range(forward):
-            out.writerow((chr, 'idxtogff', '.', index, index+1, 1, '+', '.', '.'))
+            writer.writerow((chr, 'idxtogff', '.', index, index+1, 1, '+', '.', '.'))
         for i in range(reverse):
-            out.writerow((chr, 'idxtogff', '.', index, index+1, 1, '-', '.', '.'))
+            writer.writerow((chr, 'idxtogff', '.', index, index+1, 1, '-', '.', '.'))
         
         
 def run():   
@@ -40,9 +53,9 @@ def run():
             for fname in os.listdir(path):
                 fpath = os.path.join(path, fname)
                 if os.path.isfile(fpath) and not fname.startswith('.') and not fname.endswith('.gff'):
-                    process_file(fpath)
+                    process_file(fpath, options)
         else:
-            process_file(path)
+            process_file(path, options)
             
             
 run()
