@@ -314,6 +314,8 @@ def get_output_path(input_path, options):
         attrs += 'u%d' % options.up_width
     if options.down_width:
         attrs += 'd%d' % options.down_width
+    if options.filter:
+        attrs += 'F%d' % options.filter
     
     output_dir = os.path.join(directory, 'genetrack_%s' % attrs)
     if not os.path.exists(output_dir):
