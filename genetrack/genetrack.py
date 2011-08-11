@@ -320,7 +320,7 @@ def process_chromosome(cname, data, writer, process_bounds, options):
             write(cname, '+', max(peak.start, 0), peak.end, peak.value)
     for peak in reverse_peaks:
         if process_bounds[0] < peak.index < process_bounds[1]:
-            write(cname, '-', max(peak.start//2, 0), peak.end, peak.value)
+            write(cname, '-', max(peak.start, 0), peak.end, peak.value)
     
     
     
