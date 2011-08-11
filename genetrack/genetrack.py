@@ -317,10 +317,10 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     
     for peak in forward_peaks:
         if process_bounds[0] < peak.index < process_bounds[1]:
-            write(cname, '+', max(peak.index - options.exclusion, 0), peak.index + options.exclusion, peak.value)
+            write(cname, '+', max(peak.index - options.exclusion//2, 0), peak.index + options.exclusion//2, peak.value)
     for peak in reverse_peaks:
         if process_bounds[0] < peak.index < process_bounds[1]:
-            write(cname, '-', max(peak.index - options.exclusion, 0), peak.index + options.exclusion, peak.value)
+            write(cname, '-', max(peak.index - options.exclusion//2, 0), peak.index + options.exclusion//2, peak.value)
     
     
     
