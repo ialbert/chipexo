@@ -1,3 +1,21 @@
+# genetrack.py
+#
+# Peak calling script
+#
+# By Pindi Albert, 2011
+#
+# DEPENDENCY: chrtrans.py must be in same directory
+#
+# Input: either idx or gff format of reads
+# .idx format: tab-separated chromosome (chr##), index, + reads, - reads
+# .gff format: standard gff, score interpreted as number of reads
+#
+# Output: Called peaks in either gff or txt format
+# .txt format: tab-separated chromosome, strand, start, end, read count
+# .gff format: standard gff, score is read count
+#
+# Run with no arguments or -h for usage and command line options
+
 from optparse import OptionParser, IndentedHelpFormatter
 import csv, logging, numpy, math, bisect, sys, os, copy, collections
 
@@ -340,8 +358,8 @@ def process_file(path, options):
     output_path = get_output_path(path, options)
     
     reader = csv.reader(open(path,'rU'), delimiter='\t')
-    #chromosomes = parse_reads(reader)
     writer = csv.writer(open(output_path, 'wt'), delimiter='\t')
+
     if options.format == 'idx':
         writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
     

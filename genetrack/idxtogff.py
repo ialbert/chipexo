@@ -1,3 +1,17 @@
+# idxtogff.py
+#
+# Converts reads in .idx format to .gff
+#
+# By Pindi Albert, 2011
+#
+# Input: .idx format reads
+# Format: tab-separated chromosome (chr##), index, + reads, - reads
+#
+# Output: .gff format reads
+# Format: standard gff, one line per read
+#
+# Run with no arguments or -h for usage and command line options
+
 import csv, os, logging
 from optparse import OptionParser
 

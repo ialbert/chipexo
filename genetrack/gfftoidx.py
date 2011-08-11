@@ -1,3 +1,19 @@
+# gfftoidx.py
+#
+# Converts reads in .gff format to .idx
+#
+# By Pindi Albert, 2011
+#
+# DEPENDENCY: genetrack.py must be in same directory
+#
+# Input: .gff format reads
+# Format: standard gff, score interpreted as read count
+#
+# Output: .idx format reads
+# Format: tab-separated chromosome (chr##), index, + reads, - reads
+#
+# Run with no arguments or -h for usage and command line options
+
 import csv, os, logging, sys
 from optparse import OptionParser, IndentedHelpFormatter
 
