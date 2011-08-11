@@ -78,7 +78,7 @@ class ChromosomeManager(object):
         if self.format == 'idx':
             return [int(line[1]), int(line[2]), int(line[3])]
         else:
-            return [int(line[3]), line[6]]
+            return [int(line[3]), line[6], line[5]]
             
     def chromosome_name(self):
         ''' Return the name of the chromosome about to be loaded '''
@@ -114,7 +114,11 @@ class ChromosomeManager(object):
         if self.format == 'idx':
             self.data.append(read)
         else:
-            index, strand = read
+            index, strand, value = read
+            if value == '' or value == '.':
+                value = 1
+            else:
+                value = int(value)
             if not self.data:
                 self.data.append([index, 0, 0])
                 current_read = self.data[-1]
@@ -127,9 +131,9 @@ class ChromosomeManager(object):
                 logging.error('Reads in chromosome %s are not sorted by index. (At index %d)' % (self.chromosome_name(), index))
                 raise InvalidFileError
             if strand == '+':
-                current_read[1] += 1
+                current_read[1] += value
             elif strand == '-':
-                current_read[2] += 1;
+                current_read[2] += value
             else:
                 logging.error('Strand "%s" at chromosome "%s" index %d is not valid.' % (strand, self.chromosome_name(), index))
                 raise InvalidFileError
