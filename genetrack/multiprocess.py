@@ -26,6 +26,7 @@ def process_file(fpath, options):
     inputs = []
     outputs = []
     threads = []
+    genetrack_path = os.path.join(os.path.dirname(__file__), 'genetrack.py')
     temp_dir = tempfile.mkdtemp()
     logging.info('Preparing file "%s"' % fpath)
     while not manager.done:
@@ -41,8 +42,9 @@ def process_file(fpath, options):
         inputs.append(input_name)
     # Process each chromosome
     for input in inputs:
-        c = 'python genetrack.py %s -s %d -e %d -u %d -d %d -k %d' % (
-            input, options.sigma, options.exclusion, options.up_width, options.down_width, options.chunk_size)
+        c = 'python %s %s -s %d -e %d -u %d -d %d -k %d -F %d -o %s' % (
+            genetrack_path, input, options.sigma, options.exclusion, options.up_width, options.down_width, options.chunk_size,
+            options.filter, options.format)
         t = ProcessFileThread(c)
         t.start()
         threads.append(t)
@@ -89,8 +91,12 @@ def run():
                       help='Upstream width of called peaks. Default uses half exclusion zone.')
     parser.add_option('-d', action='store', type='int', dest='down_width', default=0,
                       help='Downstream width of called peaks. Default uses half exclusion zone.')
+    parser.add_option('-F', action='store', type='int', dest='filter', default='1',
+                      help='Absolute read filter; outputs only peaks with larger read count. Default 1. ')
     parser.add_option('-k', action='store', type='int', dest='chunk_size', default=10,
                       help='Size, in millions of base pairs, to chunk each chromosome into when processing. Each 1 million size uses approximately 20MB of memory. Default 10.')
+    parser.add_option('-o', action='store', type='string', dest='format', default='gff',
+                      help='Output format for called peaks. Valid formats are gff (default) and txt.')
     parser.add_option('-p', action='store', type='int', dest='processes', default=1,
                       help='Number of processes to run concurrently')
     (options, args) = parser.parse_args()
