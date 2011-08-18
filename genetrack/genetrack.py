@@ -25,6 +25,14 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 WIDTH = 100
 
+def gff_row(cname, start, end, score, source, type='.', strand='.', phase='.', attrs={}):
+    return (cname, source, type, start, end, score, strand, phase, gff_attrs(attrs))
+    
+def gff_attrs(d):
+    if not d:
+        return '.'
+    return ';'.join('%s=%s' % item for item in d.items())
+
 class InvalidFileError(Exception):
     pass
 
@@ -311,7 +319,8 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     def write(cname, strand, start, end, value):
         if value > options.filter:
             if options.format == 'gff':
-                writer.writerow((cname, 'genetrack', '.', start, end, value, strand, '.', '.'))
+                writer.writerow(gff_row(cname=cname, source='genetrack', start=start, end=end,
+                                        score=value, strand=strand))
             else:
                 writer.writerow((cname, strand, start, end, value))
     
