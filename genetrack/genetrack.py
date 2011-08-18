@@ -255,6 +255,9 @@ def call_peaks(array, shift, data, keys, direction, options):
         for peak in peaks:
             reads = get_window(data, peak.start, peak.end, keys)
             peak.value = sum([read[direction] for read in reads])
+            indexes = [r for read in reads for r in [read[0]] * read[direction]] # Flat list of indexes with frequency
+            print peak.start, indexes
+            peak.stddev = numpy.std(indexes)
     calculate_reads()
         
     before = len(peaks)
@@ -316,20 +319,24 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     cname = convert_data(cname, 'zeropad', 'numeric')
     
     
-    def write(cname, strand, start, end, value):
+    def write(cname, strand, peak):
+        start = max(peak.start, 0)
+        end = peak.end
+        value = peak.value
+        stddev = peak.stddev
         if value > options.filter:
             if options.format == 'gff':
                 writer.writerow(gff_row(cname=cname, source='genetrack', start=start, end=end,
-                                        score=value, strand=strand))
+                                        score=value, strand=strand, attrs={'stddev':stddev}))
             else:
                 writer.writerow((cname, strand, start, end, value))
     
     for peak in forward_peaks:
         if process_bounds[0] < peak.index < process_bounds[1]:
-            write(cname, '+', max(peak.start, 0), peak.end, peak.value)
+            write(cname, '+', peak)
     for peak in reverse_peaks:
         if process_bounds[0] < peak.index < process_bounds[1]:
-            write(cname, '-', max(peak.start, 0), peak.end, peak.value)
+            write(cname, '-', peak)
     
     
     
