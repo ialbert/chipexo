@@ -17,7 +17,7 @@
 # Run with no arguments or -h for usage and command line options
 
 from optparse import OptionParser, IndentedHelpFormatter
-import csv, logging, numpy, math, bisect, sys, os, copy, collections
+import csv, logging, numpy, math, bisect, sys, os, copy
 
 from chrtrans import convert_data
 
@@ -53,14 +53,6 @@ def is_int(i):
         return True
     except ValueError:
         return False
-       
-
-       
-def next_valid(reader):
-
-    return LINE
-       
-
         
         
 class ChromosomeManager(object):
@@ -216,15 +208,14 @@ def allocate_array(data, width):
     lo, hi = get_range(data)
     rng = hi - lo
     shift = width - lo
-    return numpy.zeros(rng+width*2, numpy.float), width - lo
+    return numpy.zeros(rng+width*2, numpy.float), shift
     
 def normal_array(width, sigma, normalize=True):
     ''' Returns an array of the normal distribution of the specified width '''
-    log2, sigma2 = math.log(2), float(sigma)**2
+    sigma2 = float(sigma)**2
     
     def normal_func(x):
         return math.exp( -x * x / ( 2 * sigma2 ))
-        values = map( func, range(-width, width) )
         
     # width is the half of the distribution
     values = map( normal_func, range(-width, width) )
