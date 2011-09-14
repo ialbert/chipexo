@@ -247,7 +247,6 @@ def call_peaks(array, shift, data, keys, direction, options):
             reads = get_window(data, peak.start, peak.end, keys)
             peak.value = sum([read[direction] for read in reads])
             indexes = [r for read in reads for r in [read[0]] * read[direction]] # Flat list of indexes with frequency
-            print peak.start, indexes
             peak.stddev = numpy.std(indexes)
     calculate_reads()
         
@@ -311,7 +310,7 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     
     
     def write(cname, strand, peak):
-        start = max(peak.start, 0)
+        start = max(peak.start, 1)
         end = peak.end
         value = peak.value
         stddev = peak.stddev
