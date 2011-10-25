@@ -143,7 +143,8 @@ class ChromosomeManager(object):
             if value == '' or value == '.':
                 value = 1
             else:
-                value = int(value)
+                #value = int(value)
+                value = 1
             if not self.data:
                 self.data.append([index, 0, 0])
                 current_read = self.data[-1]
@@ -371,7 +372,9 @@ def process_file(path, options):
     output_path = get_output_path(path, options)
     
     reader = csv.reader(open(path,'rU'), delimiter='\t')
-    writer = csv.writer(open(output_path, 'wt'), delimiter='\t')
+    #writer = csv.writer(open(output_path, 'wt'), delimiter='\t')
+
+    writer = csv.writer(sys.stdout, delimiter='\t')
 
     if options.format == 'idx':
         writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
