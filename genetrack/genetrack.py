@@ -26,8 +26,12 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 WIDTH = 100
 
 def gff_row(cname, start, end, score, source, type='.', strand='.', phase='.', attrs={}):
-    return (cname, source, type, start, end, score, strand, phase, gff_attrs(attrs))
-    
+    global readsize
+    if strand == '+':
+        return (cname, source, type, start, end, score, strand, phase, gff_attrs(attrs))
+    else:
+        return (cname, source, type, start+readsize, end+readsize, score, strand, phase, gff_attrs(attrs))
+
 def gff_attrs(d):
     if not d:
         return '.'
@@ -68,6 +72,7 @@ class ChromosomeManager(object):
         self.line = self.reader.next()
         
     def is_valid(self, line):
+        global readsize
         if len(line) not in [4, 5, 9]:
             return False
         try:
@@ -76,7 +81,9 @@ class ChromosomeManager(object):
             return True
         except ValueError:
             try:
-                [int(line[4]), int(line[5])]
+                start = int(line[3])
+                end   = int(line[4])
+                readsize = end - start
                 self.format = 'gff'
                 return True
             except ValueError:
@@ -306,9 +313,9 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     reverse_peaks = call_peaks(reverse_array, reverse_shift, data, keys, 2, options)
 
     # Convert chromosome name in preparation for writing our
-    cname = convert_data(cname, 'zeropad', 'numeric')
+    #cname = convert_data(cname, 'zeropad', 'numeric')
     
-    
+
     def write(cname, strand, peak):
         start = max(peak.start, 1)
         end = peak.end
@@ -368,6 +375,8 @@ def process_file(path, options):
 
     if options.format == 'idx':
         writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
+    else:
+        writer.writerow(['##gff-version 3'])
     
     manager = ChromosomeManager(reader)
     
