@@ -435,7 +435,7 @@ def run():
                       help='Upstream width of called peaks. Default uses half exclusion zone.')
     parser.add_option('-d', action='store', type='int', dest='down_width', default=0,
                       help='Downstream width of called peaks. Default uses half exclusion zone.')
-    parser.add_option('-F', action='store', type='int', dest='filter', default='1',
+    parser.add_option('-F', action='store', type='int', dest='filter', default='3',
                       help='Absolute read filter; outputs only peaks with larger read count. Default 1. ')
     parser.add_option('-c', action='store', type='string', dest='chromosome', default='',
                       help='Chromosome (ex chr11) to limit to. Default process all.')
