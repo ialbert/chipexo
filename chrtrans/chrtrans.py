@@ -100,10 +100,11 @@ def process_file(path, in_fmt, out_fmt):
     data = convert_data(data, in_fmt, out_fmt)
     
     
-    f = open(out_path, 'wt')
+    #f = open(out_path, 'wt')
+    f = sys.stdout
     f.write(data)
     f.close()
-    logging.info('Wrote "%s"' % out_path)
+    #logging.info('Wrote "%s"' % out_path)
     
 def process_pipe(in_fmt, out_fmt):
     data = sys.stdin.read()
