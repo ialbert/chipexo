@@ -42,11 +42,12 @@ class InvalidFileError(Exception):
     pass
 
 class Peak(object):
-    def __init__(self, index, pos_width, neg_width):
+    def __init__(self, index, pos_width, neg_width, height):
         self.index = index
         self.start = index - neg_width
         self.end = index + pos_width
         self.value = 0
+        self.height = height
         self.deleted = False
         self.safe = False
     def __repr__(self):
@@ -234,8 +235,8 @@ def normal_array(width, sigma, normalize=True):
     values = numpy.array( values, numpy.float )
 
     # normalization
-    if normalize:
-        values = 1.0/math.sqrt(2 * numpy.pi * sigma2) * values 
+    #if normalize:
+    #    values = 1.0/math.sqrt(2 * numpy.pi * sigma2) * values 
 
     return values
 
@@ -250,7 +251,7 @@ def call_peaks(array, shift, data, keys, direction, options):
             neg = options.up_width or options.exclusion // 2
             if direction == 2: # Reverse strand
                 pos, neg = neg, pos # Swap positive and negative widths
-            peaks.append(Peak(int(index)-shift, pos, neg))
+            peaks.append(Peak(int(index)-shift, pos, neg, array[index]))
     find_peaks()
         
     def calculate_reads():
@@ -311,7 +312,21 @@ def process_chromosome(cname, data, writer, process_bounds, options):
             if reverse:
                 reverse_array[index+reverse_shift-WIDTH:index+reverse_shift+WIDTH] += normal * reverse
     populate_array()
-        
+
+    if options.bedgraph:
+        f = open('forward.bedgraph','at')
+        indexes = numpy.where(forward_array > 0.5)[0]
+        for index in indexes:
+            f.write('%s\t%d\t%d\t%s\n' % (cname, index - forward_shift, index - forward_shift + 1, forward_array[index]))
+        f.close()
+
+        f = open('reverse.bedgraph','at')
+        indexes = numpy.where(reverse_array > 0.5)[0]
+        for index in indexes:
+            pos = index - reverse_shift + readsize
+            f.write('%s\t%d\t%d\t%s\n' % (cname, pos, pos + 1, reverse_array[index]))
+        f.close()
+
     logging.debug('Calling forward strand')
     forward_peaks = call_peaks(forward_array, forward_shift, data, keys, 1, options)
     logging.debug('Calling reverse strand')
@@ -329,7 +344,7 @@ def process_chromosome(cname, data, writer, process_bounds, options):
         if value > options.filter:
             if options.format == 'gff':
                 writer.writerow(gff_row(cname=cname, source='genetrack', start=start, end=end,
-                                        score=value, strand=strand, attrs={'stddev':stddev}))
+                                        score=value, strand=strand, attrs={'stddev':stddev, 'height':peak.height, 'ID': value}))
             else:
                 writer.writerow((cname, strand, start, end, value))
     
@@ -339,17 +354,23 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     for peak in reverse_peaks:
         if process_bounds[0] < peak.index < process_bounds[1]:
             write(cname, '-', peak)
-    
-    
-    
-    
+
 def process_file(path, options):
     
     global WIDTH
-    WIDTH = options.sigma * 5
+    WIDTH = options.sigma * 4
     
     logging.info('Processing file "%s" with s=%d, e=%d' % (path, options.sigma, options.exclusion))
-        
+
+    if options.bedgraph:
+        f = open('forward.bedgraph','wt')
+        f.write("track type=bedGraph color=200,0,0\n")
+        f.close()
+            
+        f = open('reverse.bedgraph','wt')
+        f.write("track type=bedGraph color=0,0,200\n")
+        f.close()
+
     if path == '-':
         reader = csv.reader(sys.stdin, delimiter='\t')
     elif os.path.exists(path):
@@ -428,7 +449,10 @@ def run():
                       help='Size, in millions of base pairs, to chunk each chromosome into when processing. Each 1 million size uses approximately 20MB of memory. Default %default.')
     parser.add_option('-o', action='store', type='string', dest='format', default='gff',
                       help='Output format for called peaks. Valid formats are gff and txt. Default %default.')
+    parser.add_option('-b', action='store_true', dest='bedgraph', help='Output bed graph tracks.')
+
     parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages.')
+ 
     (options, args) = parser.parse_args()
     
 
