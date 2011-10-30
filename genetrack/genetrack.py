@@ -47,6 +47,7 @@ class Peak(object):
         self.start = index - neg_width
         self.end = index + pos_width
         self.value = 0
+        self.readcount = 0
         self.height = height
         self.deleted = False
         self.safe = False
@@ -258,7 +259,8 @@ def call_peaks(array, shift, data, keys, direction, options):
         # Calculate the number of reads in each peak
         for peak in peaks:
             reads = get_window(data, peak.start, peak.end, keys)
-            peak.value = sum([read[direction] for read in reads])
+            peak.value = peak.height
+            peak.readcount = sum([read[direction] for read in reads])
             indexes = [r for read in reads for r in [read[0]] * read[direction]] # Flat list of indexes with frequency
             peak.stddev = numpy.std(indexes)
     calculate_reads()
@@ -315,7 +317,7 @@ def process_chromosome(cname, data, writer, process_bounds, options):
 
     if options.bedgraph:
         f = open('forward.bedgraph','at')
-        indexes = numpy.where(forward_array > 0.5)[0]
+        indexes = numpy.where(forward_array >= 0.5)[0]
         for index in indexes:
             f.write('%s\t%d\t%d\t%s\n' % (cname, index - forward_shift, index - forward_shift + 1, forward_array[index]))
         f.close()
@@ -344,7 +346,7 @@ def process_chromosome(cname, data, writer, process_bounds, options):
         if value > options.filter:
             if options.format == 'gff':
                 writer.writerow(gff_row(cname=cname, source='genetrack', start=start, end=end,
-                                        score=value, strand=strand, attrs={'stddev':stddev, 'height':peak.height, 'ID': value}))
+                                        score=value, strand=strand, attrs={'stddev':stddev, 'height':peak.height, 'readcount':peak.readcount, 'ID': "P%d" % ((start+end)/2)}))
             else:
                 writer.writerow((cname, strand, start, end, value))
     
