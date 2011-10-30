@@ -411,22 +411,22 @@ class CustomHelpFormatter(IndentedHelpFormatter):
 def run():   
     parser = OptionParser(usage='%prog [options] input_paths', description=usage, formatter=CustomHelpFormatter())
     parser.add_option('-s', action='store', type='int', dest='sigma', default=5,
-                      help='Sigma to use when smoothing reads to call peaks. Default 5.')
+                      help='Sigma to use when smoothing reads to call peaks. Default %default')
     parser.add_option('-e', action='store', type='int', dest='exclusion', default=20,
-                      help='Exclusion zone around each peak that prevents others from being called. Default 20.')
+                      help='Exclusion zone around each peak that prevents others from being called. Default %default.')
     parser.add_option('-u', action='store', type='int', dest='up_width', default=0,
                       help='Upstream width of called peaks. Default uses half exclusion zone.')
     parser.add_option('-d', action='store', type='int', dest='down_width', default=0,
                       help='Downstream width of called peaks. Default uses half exclusion zone.')
     parser.add_option('-F', action='store', type='int', dest='filter', default='3',
-                      help='Absolute read filter; outputs only peaks with larger read count. Default 1. ')
+                      help='Absolute read filter; outputs only peaks with larger read count. Default %default. ')
     parser.add_option('-c', action='store', type='string', dest='chromosome', default='',
                       help='Chromosome (ex chr11) to limit to. Default process all.')
     parser.add_option('-k', action='store', type='int', dest='chunk_size', default=10,
-                      help='Size, in millions of base pairs, to chunk each chromosome into when processing. Each 1 million size uses approximately 20MB of memory. Default 10.')
+                      help='Size, in millions of base pairs, to chunk each chromosome into when processing. Each 1 million size uses approximately 20MB of memory. Default %default.')
     parser.add_option('-o', action='store', type='string', dest='format', default='gff',
-                      help='Output format for called peaks. Valid formats are gff (default) and txt.')
-    parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages')
+                      help='Output format for called peaks. Valid formats are gff and txt. Default %default.')
+    parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages.')
     (options, args) = parser.parse_args()
     
 
