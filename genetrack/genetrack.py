@@ -21,7 +21,8 @@ import csv, logging, numpy, math, bisect, sys, os, copy
 
 from chrtrans import convert_data
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+logging.basicConfig(format='%(levelname)s:%(message)s')
+
 
 WIDTH = 100
 
@@ -78,6 +79,7 @@ class ChromosomeManager(object):
         try:
             [int(i) for i in line[1:]]
             self.format = 'idx'
+            readsize = 0
             return True
         except ValueError:
             try:
@@ -338,29 +340,6 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     
     
     
-def get_output_path(input_path, options):
-    directory, fname = os.path.split(input_path)
-    
-    if fname.startswith('INPUT'):
-        fname = fname[5:].strip('_') # Strip "INPUT_" from the file if present
-    fname = ''.join(fname.split('.')[:-1]) # Strip extension (will be re-added as appropriate)
-
-    attrs = 's%de%d' % (options.sigma, options.exclusion) # Attribute list to add to file/dir name
-    if options.up_width:
-        attrs += 'u%d' % options.up_width
-    if options.down_width:
-        attrs += 'd%d' % options.down_width
-    if options.filter:
-        attrs += 'F%d' % options.filter
-    
-    output_dir = os.path.join(directory, 'genetrack_%s' % attrs)
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-    if options.chromosome:
-        fname = options.chromosome + '_' + fname
-
-    return os.path.join(output_dir, '%s_%s.%s' % (fname, attrs, options.format))
-    
     
 def process_file(path, options):
     
@@ -368,10 +347,15 @@ def process_file(path, options):
     WIDTH = options.sigma * 5
     
     logging.info('Processing file "%s" with s=%d, e=%d' % (path, options.sigma, options.exclusion))
-    
-    output_path = get_output_path(path, options)
-    
-    reader = csv.reader(open(path,'rU'), delimiter='\t')
+        
+    if path == '-':
+        reader = csv.reader(sys.stdin, delimiter='\t')
+    elif os.path.exists(path):
+        reader = csv.reader(open(path,'rU'), delimiter='\t')
+    else:
+        logging.error('Path "%s" does not exist.' % path)
+        return
+
     #writer = csv.writer(open(output_path, 'wt'), delimiter='\t')
 
     writer = csv.writer(sys.stdout, delimiter='\t')
@@ -407,14 +391,13 @@ def process_file(path, options):
 
 usage = '''
 input_paths may be:
-- a file or list of files to run on
-- a directory or list of directories to run on all files in them
-- "." to run in the current directory
+- a file to run on
+- "-" to run on standard input
+
 
 example usages:
-python genetrack.py -s 10 /path/to/a/file.txt path/to/another/file.txt
-python genetrack.py -s 5 -e 50 /path/to/a/data/directory/
-python genetrack.py .
+python genetrack.py -s 10 /path/to/a/file.txt
+python genetrack.py -s 5 -e 50 -
 '''.lstrip()
 
 
@@ -439,20 +422,19 @@ def run():
                       help='Absolute read filter; outputs only peaks with larger read count. Default 1. ')
     parser.add_option('-c', action='store', type='string', dest='chromosome', default='',
                       help='Chromosome (ex chr11) to limit to. Default process all.')
-    parser.add_option('-f', action='store', type='string', dest='config_file', default='',
-                      help='Optional file to load sigma and exclusion parameters per input file.')
     parser.add_option('-k', action='store', type='int', dest='chunk_size', default=10,
                       help='Size, in millions of base pairs, to chunk each chromosome into when processing. Each 1 million size uses approximately 20MB of memory. Default 10.')
     parser.add_option('-o', action='store', type='string', dest='format', default='gff',
                       help='Output format for called peaks. Valid formats are gff (default) and txt.')
     parser.add_option('-v', action='store_true', dest='verbose', help='Verbose mode: displays debug messages')
-    parser.add_option('-q', action='store_true', dest='quiet', help='Quiet mode: suppresses all non-error messages')
     (options, args) = parser.parse_args()
     
+
     if options.verbose:
         logging.getLogger().setLevel(logging.DEBUG) # Show all info/debug messages
-    if options.quiet:
-        logging.getLogger().setLevel(logging.ERROR) # Silence all non-error messages
+    else:
+        logging.getLogger().setLevel(logging.ERROR)
+
         
         
     if options.format not in ['gff','txt']:
@@ -462,47 +444,16 @@ def run():
     if not args:
         parser.print_help()
         sys.exit(1)
+
+    if len(args) > 1:
+        parser.error('Only one file can be processed at a time.')
         
-    CONFIG = {}
-    if options.config_file:
-        logging.info('Loading configuration file "%s"' % options.config_file)
-        reader = csv.reader(open(options.config_file, 'rU'), delimiter='\t')
-        for line in reader:
-            if len(line) == 3 and is_int(line[1]) and is_int(line[2]):
-                CONFIG[line[0]] = {'sigma':int(line[1]), 'exclusion':int(line[2])}
-        logging.info('Loaded configuration settings for %d files.' % len(CONFIG))
-        
-    for path in args:
-        if not os.path.exists(path):
-            parser.error('Path %s does not exist.' % path)
-        if os.path.isdir(path):
-            files = []
-            for fname in os.listdir(path):
-                fpath = os.path.join(path, fname)
-                if os.path.isfile(fpath) and not fname.startswith('.'): 
-                    files.append(fpath)
-        else:
-            files = [path]
-        for fpath in files:
-            dir, fname = os.path.split(fpath)
-            if fname in CONFIG:
-                current_options = copy.deepcopy(options)
-                current_options.sigma = CONFIG[fname]['sigma']
-                current_options.exclusion = CONFIG[fname]['exclusion']
-            else:
-                if options.config_file:
-                    logging.warning('File "%s" not found in config file' % fname)
-                current_options = options
-            try:
-                process_file(fpath, current_options)
-            except InvalidFileError:
-                logging.error('Unable to process file "%s"' % fpath)
+    path = args[0]
+
+    process_file(path, options)
+
             
 if __name__ == '__main__':
-    #reader = csv.reader(open('data/INPUT_genetrack_Reb1_rep2.idx', 'rU'), delimiter='\t')
-    #it = chromosome_iterator(reader)
-    #for cname, data in it:
-    #    print cname, len(list(data))
     run()
     #import cProfile
     #cProfile.run('run()', 'profilev8.bin')
