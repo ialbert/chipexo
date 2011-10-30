@@ -80,6 +80,7 @@ class ChromosomeManager(object):
             [int(i) for i in line[1:]]
             self.format = 'idx'
             readsize = 0
+            self.parse_line = self.parse_idx_line
             return True
         except ValueError:
             try:
@@ -87,6 +88,7 @@ class ChromosomeManager(object):
                 end   = int(line[4])
                 readsize = end - start
                 self.format = 'gff'
+                self.parse_line = self.parse_gff_line
                 return True
             except ValueError:
                 return False
@@ -101,12 +103,12 @@ class ChromosomeManager(object):
         if s > 0:
             logging.info('Skipped initial %d line(s) of file' % s)
             
-    def parse_line(self, line):
-        if self.format == 'idx':
-            return [int(line[1]), int(line[2]), int(line[3])]
-        else:
-            return [int(line[3]), line[6], line[5]]
-            
+    def parse_gff_line(self, line):
+        return [int(line[3]), line[6], line[5]]
+
+    def parse_idx_line(self, line):
+        return [int(line[1]), int(line[2]), int(line[3])]
+        
     def chromosome_name(self):
         ''' Return the name of the chromosome about to be loaded '''
         return self.line[0]
