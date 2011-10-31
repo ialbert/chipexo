@@ -314,9 +314,11 @@ def call_peaks(array, shift, data, keys, direction, options):
             
     return peaks
     
-def process_chromosome(cname, data, writer, process_bounds, options):
-    ''' Process a chromosome. Takes the chromosome name, list of reads, a CSV writer
-    to write processes results to, the bounds (2-tuple) to write results in, and options. '''
+def process_chromosome(cname, data, process_bounds, options):
+    '''
+    Process a chromosome. Takes the chromosome name, list of reads,
+    the bounds (2-tuple) to write results in, and options.
+    '''
     if data:
         logging.info('Processing chromosome %s indexes %d-%d' % (cname, process_bounds[0], process_bounds[1]))
     else:
@@ -367,10 +369,10 @@ def process_chromosome(cname, data, writer, process_bounds, options):
         stddev = peak.stddev
         if value > options.filter:
             if options.format == 'gff':
-                writer.writerow(gff_row(cname=cname, source='genetrack', start=start, end=end,
+                writerow(gff_row(cname=cname, source='genetrack', start=start, end=end,
                                         score=value, strand=strand, attrs={'stddev':stddev, 'height':peak.height, 'readcount':peak.readcount, 'ID': "P%d" % ((start+end)/2)}))
             else:
-                writer.writerow((cname, strand, start, end, value))
+                writerow((cname, strand, start, end, value))
     
     for peak in forward_peaks:
         if process_bounds[0] < peak.index < process_bounds[1]:
@@ -379,6 +381,9 @@ def process_chromosome(cname, data, writer, process_bounds, options):
         if process_bounds[0] < peak.index < process_bounds[1]:
             write(cname, '-', peak)
 
+def writerow( elems ):
+    print "\t".join( map(str, elems) )
+    
 def process_file(path, options):
     
     global WIDTH
@@ -398,19 +403,15 @@ def process_file(path, options):
     if path == '-':
         reader = csv.reader(sys.stdin, delimiter='\t')
     elif os.path.exists(path):
-        reader = csv.reader(open(path,'rU'), delimiter='\t')
+        reader = csv.reader(open(path,'rt'), delimiter='\t')
     else:
         logging.error('Path "%s" does not exist.' % path)
         return
 
-    #writer = csv.writer(open(output_path, 'wt'), delimiter='\t')
-
-    writer = csv.writer(sys.stdout, delimiter='\t')
-
     if options.format == 'idx':
-        writer.writerow(('chrom', 'strand', 'start', 'end', 'value'))
+        writerow(('chrom', 'strand', 'start', 'end', 'value'))
     else:
-        writer.writerow(['##gff-version 3'])
+        writerow(['##gff-version 3'])
     
     manager = ChromosomeManager(reader)
      
@@ -426,7 +427,7 @@ def process_file(path, options):
             for chunk in get_chunks(lo, hi, size=options.chunk_size * 10 ** 6, overlap=WIDTH):
                 (slice_start, slice_end), process_bounds = chunk
                 window = get_window(data, slice_start, slice_end, keys)
-                process_chromosome(cname, window, writer, process_bounds, options)
+                process_chromosome(cname, window, process_bounds, options)
             if options.chromosome: # A specific chromosome was specified. We're done, so terminate
                 break
             #process_chromosome(cname, list(data), writer, options)
