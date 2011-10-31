@@ -1,28 +1,25 @@
-# genetrack.py
-#
-# Peak calling script
-#
-# By Pindi Albert, 2011
-#
-# DEPENDENCY: chrtrans.py must be in same directory
-#
-# Input: either idx or gff format of reads
-# .idx format: tab-separated chromosome (chr##), index, + reads, - reads
-# .gff format: standard gff, score interpreted as number of reads
-#
-# Output: Called peaks in either gff or txt format
-# .txt format: tab-separated chromosome, strand, start, end, read count
-# .gff format: standard gff, score is read count
-#
-# Run with no arguments or -h for usage and command line options
+"""
+genetrack.py
+
+Peak calling script
+
+By Pindi Albert, 2011
+
+Run with no arguments or -h for usage and command line options
+
+Input: either idx, bed or gff format. Format will be autodetected.
+
+Output: Called peaks in either gff
+
+.txt format: tab-separated chromosome, strand, start, end, read count
+.gff format: standard gff 9 fields
+.bed format: 6 column bed with strand information
+"""
 
 from optparse import OptionParser, IndentedHelpFormatter
 import csv, logging, numpy, math, bisect, sys, os, copy
 
-from chrtrans import convert_data
-
 logging.basicConfig(format='%(levelname)s:%(message)s')
-
 
 WIDTH = 100
 
@@ -73,11 +70,16 @@ class ChromosomeManager(object):
         
     def next(self):
         self.line = self.reader.next()
-        
+    
+    def detect_format(self, line):
+        pass
+    
     def is_valid(self, line):
         global readsize
-        if len(line) not in [4, 5, 9]:
+        if len(line) not in [4, 5, 6, 9]:
             return False
+        
+        # try genetrack index format
         try:
             [int(i) for i in line[1:]]
             self.format = 'idx'
@@ -85,15 +87,35 @@ class ChromosomeManager(object):
             self.parse_line = self.parse_idx_line
             return True
         except ValueError:
-            try:
-                start = int(line[3])
-                end   = int(line[4])
-                readsize = end - start
-                self.format = 'gff'
-                self.parse_line = self.parse_gff_line
-                return True
-            except ValueError:
-                return False
+            # try next format
+            pass
+    
+        
+        # trying BED format
+        try:
+            start = int(line[1])
+            end   = int(line[2])
+            readsize = end - start
+            self.format = 'bed'
+            self.parse_line = self.parse_bed_line
+            return True
+        except ValueError:
+            # try next format
+            pass
+    
+        # trying the GFF format
+        try:
+            start = int(line[3])
+            end   = int(line[4])
+            readsize = end - start + 1
+            self.format = 'gff'
+            self.parse_line = self.parse_gff_line
+            return True
+        except ValueError:
+            # try next format
+            pass
+        
+        return False
         
     def next_valid(self):
         ''' Advance to the next valid line in the reader '''
@@ -110,6 +132,10 @@ class ChromosomeManager(object):
 
     def parse_idx_line(self, line):
         return [int(line[1]), int(line[2]), int(line[3])]
+    
+    def parse_bed_line(self, line):
+        # turn it into one based interval
+        return [int(line[1]) + 1, line[5], line[4]]
         
     def chromosome_name(self):
         ''' Return the name of the chromosome about to be loaded '''
@@ -146,11 +172,14 @@ class ChromosomeManager(object):
             self.data.append(read)
         else:
             index, strand, value = read
+            '''
             if value == '' or value == '.':
                 value = 1
             else:
                 #value = int(value)
                 value = 1
+            '''
+            value = 1
             if not self.data:
                 self.data.append([index, 0, 0])
                 current_read = self.data[-1]
@@ -176,8 +205,6 @@ class ChromosomeManager(object):
         self.load_chromosome(collect_data=False)
     
             
-
-
 def make_keys(data):
     return [read[0] for read in data]
     
@@ -213,8 +240,6 @@ def get_chunks(lo, hi, size, overlap=500):
         chunks.append(((slice_start, slice_end), (process_start, process_end)))
     return chunks
     
-    
-
 def allocate_array(data, width):
     ''' Allocates a new array with the dimensions required to fit all reads in the
     argument. The new array is totally empty. Returns the array and the shift (number to add to
@@ -316,6 +341,7 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     populate_array()
 
     if options.bedgraph:
+        logging.debug('Generating bedgraph files')
         f = open('forward.bedgraph','at')
         indexes = numpy.where(forward_array >= 0.5)[0]
         for index in indexes:
@@ -333,10 +359,6 @@ def process_chromosome(cname, data, writer, process_bounds, options):
     forward_peaks = call_peaks(forward_array, forward_shift, data, keys, 1, options)
     logging.debug('Calling reverse strand')
     reverse_peaks = call_peaks(reverse_array, reverse_shift, data, keys, 2, options)
-
-    # Convert chromosome name in preparation for writing our
-    #cname = convert_data(cname, 'zeropad', 'numeric')
-    
 
     def write(cname, strand, peak):
         start = max(peak.start, 1)
@@ -391,8 +413,7 @@ def process_file(path, options):
         writer.writerow(['##gff-version 3'])
     
     manager = ChromosomeManager(reader)
-    
-        
+     
     while not manager.done:
         cname = manager.chromosome_name()
         if not options.chromosome or options.chromosome == cname: # Should we process this chromosome?
@@ -413,25 +434,20 @@ def process_file(path, options):
             logging.info('Skipping chromosome %s' % cname)
             manager.skip_chromosome()
     
-
 usage = '''
 input_paths may be:
 - a file to run on
 - "-" to run on standard input
 
-
 example usages:
 python genetrack.py -s 10 /path/to/a/file.txt
 python genetrack.py -s 5 -e 50 -
 '''.lstrip()
-
-
  
 # We must override the help formatter to force it to obey our newlines in our custom description
 class CustomHelpFormatter(IndentedHelpFormatter):
     def format_description(self, description):
         return description
-
 
 def run():   
     parser = OptionParser(usage='%prog [options] input_paths', description=usage, formatter=CustomHelpFormatter())
@@ -444,7 +460,7 @@ def run():
     parser.add_option('-d', action='store', type='int', dest='down_width', default=0,
                       help='Downstream width of called peaks. Default uses half exclusion zone.')
     parser.add_option('-F', action='store', type='int', dest='filter', default='3',
-                      help='Absolute read filter; outputs only peaks with larger read count. Default %default. ')
+                      help='Absolute read filter; outputs only peaks with larger peak height. Default %default. ')
     parser.add_option('-c', action='store', type='string', dest='chromosome', default='',
                       help='Chromosome (ex chr11) to limit to. Default process all.')
     parser.add_option('-k', action='store', type='int', dest='chunk_size', default=10,
@@ -457,18 +473,14 @@ def run():
  
     (options, args) = parser.parse_args()
     
-
     if options.verbose:
         logging.getLogger().setLevel(logging.DEBUG) # Show all info/debug messages
     else:
         logging.getLogger().setLevel(logging.ERROR)
 
-        
-        
     if options.format not in ['gff','txt']:
         parser.error('%s is not a valid format. Use -h option for a list of valid methods.' % options.format)
-        
-        
+                
     if not args:
         parser.print_help()
         sys.exit(1)
