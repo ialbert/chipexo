@@ -85,6 +85,7 @@ class ChromosomeManager(object):
             self.format = 'idx'
             readsize = 0
             self.parse_line = self.parse_idx_line
+            logging.debug('IDX format detected')
             return True
         except ValueError:
             # try next format
@@ -98,6 +99,7 @@ class ChromosomeManager(object):
             readsize = end - start
             self.format = 'bed'
             self.parse_line = self.parse_bed_line
+            logging.debug('BED format detected')        
             return True
         except ValueError:
             # try next format
@@ -110,6 +112,7 @@ class ChromosomeManager(object):
             readsize = end - start + 1
             self.format = 'gff'
             self.parse_line = self.parse_gff_line
+            logging.debug('GFF format detected')
             return True
         except ValueError:
             # try next format
@@ -148,7 +151,9 @@ class ChromosomeManager(object):
             logging.error('File is not grouped by chromosome')
             raise InvalidFileError
         self.data = []
+
         while self.line[0] == cname:
+            
             if collect_data:
                 read = self.parse_line(self.line)
                 if read[0] < self.current_index:
