@@ -442,12 +442,14 @@ def process_file(path, options):
     
 usage = '''
 input_paths may be:
-- a file to run on
-- "-" to run on standard input
 
-example usages:
-python genetrack.py -s 10 /path/to/a/file.txt
-python genetrack.py -s 5 -e 50 -
+    - a file to run on
+    - "-" to run on standard input
+
+example usage:
+
+    python genetrack.py -s 10 /path/to/a/file.txt
+    python genetrack.py -s 5 -e 50 -
 '''.lstrip()
  
 # We must override the help formatter to force it to obey our newlines in our custom description
