@@ -17,7 +17,7 @@ The input files should be in `BED`, `GFF` or the internal `.idx` format.
 
 Detailed usage:
 
-	Usage: genetrack.py [options] input_paths
+    Usage: genetrack.py [options] input_paths
 
 	input_paths may be:
 
