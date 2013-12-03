@@ -25,10 +25,12 @@ WIDTH = 100
 
 def gff_row(cname, start, end, score, source, type='.', strand='.', phase='.', attrs={}):
     global readsize
-    if strand == '+':
-        return (cname, source, type, start, end, score, strand, phase, gff_attrs(attrs))
-    else:
-        return (cname, source, type, start+readsize, end+readsize, score, strand, phase, gff_attrs(attrs))
+    if strand != '+':
+        start += readsize
+        end += readsize
+
+    attrs['ID']= (start+end)/2
+    return (cname, source, type, start, end, score, strand, phase, gff_attrs(attrs))
 
 def gff_attrs(d):
     if not d:
@@ -375,7 +377,7 @@ def process_chromosome(cname, data, process_bounds, options):
         if value > options.filter:
             if options.format == 'gff':
                 writerow(gff_row(cname=cname, source='genetrack', start=start, end=end,
-                                        score=value, strand=strand, attrs={'stddev':stddev, 'height':peak.height, 'readcount':peak.readcount, 'ID': "P%d" % ((start+end)/2)}))
+                                        score=value, strand=strand, attrs={'stddev':stddev, 'height':peak.height, 'readcount':peak.readcount}))
             else:
                 writerow((cname, strand, start, end, value))
     
